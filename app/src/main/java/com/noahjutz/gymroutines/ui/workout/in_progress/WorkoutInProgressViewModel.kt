@@ -84,6 +84,35 @@ class WorkoutInProgressViewModel(
         }
     }
 
+    fun restoreSet(set: WorkoutSet, setGroup: WorkoutSetGroup?) {
+        viewModelScope.launch {
+            val groupId = if (setGroup == null) {
+                set.groupId
+            } else {
+                val existingGroup = workoutRepository.getSetGroup(setGroup.id)
+                if (existingGroup != null) {
+                    existingGroup.id
+                } else {
+                    val groups = workoutRepository.getSetGroupsInWorkout(setGroup.workoutId)
+                    groups
+                        .filter { it.position >= setGroup.position }
+                        .sortedByDescending { it.position }
+                        .forEach { next ->
+                            workoutRepository.update(next.copy(position = next.position + 1))
+                        }
+                    workoutRepository.insert(setGroup.copy(id = 0)).toInt()
+                }
+            }
+
+            workoutRepository.insert(
+                set.copy(
+                    groupId = groupId,
+                    workoutSetId = 0,
+                )
+            )
+        }
+    }
+
     fun addSet(setGroup: WorkoutSetGroupWithSets) {
         viewModelScope.launch {
             val lastSet = setGroup.sets.lastOrNull()

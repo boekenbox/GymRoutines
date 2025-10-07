@@ -336,9 +336,9 @@ private fun DeltaValue(value: Double, suffix: String, showDecimals: Boolean = tr
 }
 
 @Composable
-private fun PrRow(pr: PrEventUi, onClick: () -> Unit) {
+fun PrRow(pr: PrEventUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

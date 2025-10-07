@@ -113,7 +113,7 @@ class WorkoutInsightsViewModel(
                     lastSessionSummary = summary,
                     weeklyVolume = weeklyVolume,
                     sessionComparison = sessionComparison,
-                    prs = prComputation.first.take(5),
+                    prs = prComputation.first,
                     exerciseProgress = exerciseProgress,
                     consistency = consistency,
                     routineUtilization = routineUtilization,

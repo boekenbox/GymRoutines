@@ -109,6 +109,7 @@
     <string name="insights_session_comparison_against">Compared with %1$s</string>
     <string name="insights_session_comparison_volume_delta">Session volume Δ %1$s</string>
     <string name="insights_prs_title">Personal records</string>
+    <string name="insights_prs_history_title">PR history</string>
     <string name="insights_prs_view_all">View all PRs</string>
     <string name="insights_prs_empty">No PRs yet. Keep training!</string>
     <string name="insights_weekly_volume_title">Weekly volume</string>

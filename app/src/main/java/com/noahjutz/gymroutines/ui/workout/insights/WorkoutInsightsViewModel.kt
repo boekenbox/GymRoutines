@@ -526,7 +526,7 @@ class WorkoutInsightsViewModel(
                 bestEst = if (bestEst == 0.0) null else bestEst
             )
         }
-    }https://github.com/boekenbox/GymRoutines/pull/11/conflict?name=app%252Fsrc%252Fmain%252Fjava%252Fcom%252Fnoahjutz%252Fgymroutines%252Fui%252Fworkout%252Finsights%252FWorkoutInsightsViewModel.kt&ancestor_oid=7adbe9f9b02e8fd1d6407eb0599849d1ba4fabe7&base_oid=3c0f30c3f3b4fc8685dbebe11fc1be90da7f67e8&head_oid=80fe665c6237e0ec09fe5450e5f1aa215d776cfe
+    }
 
     private data class ExerciseSessionSummary(
         val exerciseId: Int,

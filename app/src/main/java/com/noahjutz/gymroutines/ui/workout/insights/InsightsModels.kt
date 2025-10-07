@@ -3,7 +3,7 @@ package com.noahjutz.gymroutines.ui.workout.insights
 import java.time.Instant
 import java.time.LocalDate
 
-internal data class WorkoutDurationChartData(
+data class WorkoutDurationChartData(
     val aggregated: List<Pair<Float, Float>>,
     val raw: List<Pair<Float, Float>>
 )

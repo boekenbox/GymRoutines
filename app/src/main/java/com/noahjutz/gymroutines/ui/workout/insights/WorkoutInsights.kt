@@ -49,6 +49,7 @@ import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.ui.components.SimpleLineChart
 import org.koin.androidx.compose.getViewModel
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.absoluteValue
@@ -80,7 +81,9 @@ fun WorkoutInsights(
             )
         }
     ) { padding ->
-        LazyColumn(
+            val durationChart = state.durationChart
+
+            LazyColumn(
             contentPadding = PaddingValues(bottom = 32.dp, top = padding.calculateTopPadding() + 16.dp)
         ) {
             item {
@@ -89,14 +92,14 @@ fun WorkoutInsights(
                     onClick = {},
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    if (state.durationChart == null) {
+                    if (durationChart == null) {
                         EmptyStateText(text = stringResource(R.string.insights_duration_empty))
                     } else {
                         Box(Modifier.fillMaxWidth().height(180.dp)) {
                             SimpleLineChart(
                                 modifier = Modifier.fillMaxWidth().height(180.dp),
-                                data = state.durationChart.aggregated,
-                                secondaryData = state.durationChart.raw
+                                data = durationChart.aggregated,
+                                secondaryData = durationChart.raw
                             )
                         }
                     }
@@ -346,7 +349,8 @@ private fun PrRow(pr: PrEventUi, onClick: () -> Unit) {
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(text = pr.displayValue(), style = typography.body1, fontWeight = FontWeight.Bold)
-            Text(text = DateTimeFormatter.ofPattern("MMM d").format(LocalDate.ofInstant(pr.occurredAt, java.time.ZoneId.systemDefault())), style = typography.caption)
+            val occurrenceDate = pr.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
+            Text(text = DateTimeFormatter.ofPattern("MMM d").format(occurrenceDate), style = typography.caption)
         }
         IconButton(onClick = onClick) {
             Icon(Icons.Default.ChevronRight, contentDescription = null)
@@ -371,6 +375,8 @@ private fun PrEventUi.displayValue(): String {
 @Composable
 private fun WeeklyVolumeChart(points: List<WeeklyVolumePoint>) {
     val maxVolume = points.maxOfOrNull { it.totalVolume } ?: 1.0
+    val barColor = colors.primary
+    val averageLineColor = colors.onSurface.copy(alpha = 0.5f)
     Column(horizontalAlignment = Alignment.Start) {
         Canvas(
             modifier = Modifier
@@ -386,7 +392,7 @@ private fun WeeklyVolumeChart(points: List<WeeklyVolumePoint>) {
                 val barHeight = (normalized * maxHeight).toFloat()
                 val x = index * step - barWidthPx / 2f
                 drawRect(
-                    color = colors.primary,
+                    color = barColor,
                     topLeft = androidx.compose.ui.geometry.Offset(x.coerceAtLeast(0f), maxHeight - barHeight),
                     size = androidx.compose.ui.geometry.Size(barWidthPx, barHeight)
                 )
@@ -407,7 +413,7 @@ private fun WeeklyVolumeChart(points: List<WeeklyVolumePoint>) {
                 }
                 drawPath(
                     path = path,
-                    color = colors.onSurface.copy(alpha = 0.5f),
+                    color = averageLineColor,
                     style = Stroke(width = 2.dp.toPx())
                 )
             }
@@ -578,6 +584,7 @@ private fun EmptyStateText(text: String) {
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun InsightCard(
     title: String,

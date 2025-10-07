@@ -63,6 +63,7 @@ import androidx.compose.material.Surface
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.material.contentColorFor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.lerp
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
@@ -175,30 +177,31 @@ private fun WorkoutInProgressContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
     ) {
         item {
+            val routineNameBackground = lerp(colors.surface, colors.primary, 0.12f)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp),
-                color = colors.primary.copy(alpha = 0.08f),
+                    .padding(top = 8.dp),
+                color = routineNameBackground,
                 shape = MaterialTheme.shapes.large,
                 elevation = 0.dp
             ) {
                 val routineName by viewModel.routineName.collectAsState("")
                 Text(
                     text = routineName,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                    style = typography.h5.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    style = typography.h6.copy(fontWeight = FontWeight.SemiBold),
                 )
             }
             Text(
                 workout.workout.duration.pretty(),
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 4.dp),
-                style = typography.subtitle1.copy(
+                    .padding(top = 8.dp, bottom = 4.dp),
+                style = typography.subtitle2.copy(
                     textAlign = TextAlign.Center,
                     color = colors.onSurface.copy(alpha = 0.75f)
                 )
@@ -208,21 +211,22 @@ private fun WorkoutInProgressContent(
         items(workout.setGroups.sortedBy { it.group.position }, key = { it.group.id }) { setGroup ->
             val exercise by viewModel.getExercise(setGroup.group.exerciseId)
                 .collectAsState(initial = null)
+            val headerColor = lerp(colors.surface, colors.primary, 0.32f)
             Card(
                 Modifier
                     .fillMaxWidth()
                     .animateItemPlacement()
-                    .padding(top = 16.dp),
-                shape = MaterialTheme.shapes.large,
+                    .padding(top = 14.dp),
+                shape = MaterialTheme.shapes.medium,
             ) {
                 Column {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        color = colors.primary,
-                        shape = MaterialTheme.shapes.large
+                        color = headerColor,
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -230,7 +234,7 @@ private fun WorkoutInProgressContent(
                                 exercise?.name.toString(),
                                 style = typography.h6.copy(
                                     fontWeight = FontWeight.SemiBold,
-                                    color = colors.onPrimary
+                                    color = contentColorFor(headerColor)
                                 ),
                                 modifier = Modifier.weight(1f)
                             )
@@ -243,7 +247,7 @@ private fun WorkoutInProgressContent(
                                     Icon(
                                         Icons.Default.DragHandle,
                                         stringResource(R.string.drag_handle),
-                                        tint = colors.onPrimary
+                                        tint = contentColorFor(headerColor)
                                     )
                                 }
                                 DropdownMenu(
@@ -284,20 +288,21 @@ private fun WorkoutInProgressContent(
                             }
                         }
                     }
-                    Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
-                        Row(Modifier.padding(horizontal = 4.dp)) {
-                            val headerTextStyle = typography.subtitle2.copy(
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Row(Modifier.padding(horizontal = 2.dp)) {
+                            val headerTextStyle = typography.caption.copy(
                                 color = colors.onSurface,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
                             )
+                            val headerBackground = colors.onSurface.copy(alpha = 0.06f)
                             if (exercise?.logReps == true) Box(
                                 Modifier
-                                    .padding(4.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
                                     .weight(1f)
-                                    .height(48.dp)
+                                    .height(40.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .background(colors.primary.copy(alpha = 0.08f)),
+                                    .background(headerBackground),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -307,11 +312,11 @@ private fun WorkoutInProgressContent(
                             }
                             if (exercise?.logWeight == true) Box(
                                 Modifier
-                                    .padding(4.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
                                     .weight(1f)
-                                    .height(48.dp)
+                                    .height(40.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .background(colors.primary.copy(alpha = 0.08f)),
+                                    .background(headerBackground),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -321,11 +326,11 @@ private fun WorkoutInProgressContent(
                             }
                             if (exercise?.logTime == true) Box(
                                 Modifier
-                                    .padding(4.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
                                     .weight(1f)
-                                    .height(48.dp)
+                                    .height(40.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .background(colors.primary.copy(alpha = 0.08f)),
+                                    .background(headerBackground),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -335,11 +340,11 @@ private fun WorkoutInProgressContent(
                             }
                             if (exercise?.logDistance == true) Box(
                                 Modifier
-                                    .padding(4.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
                                     .weight(1f)
-                                    .height(48.dp)
+                                    .height(40.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .background(colors.primary.copy(alpha = 0.08f)),
+                                    .background(headerBackground),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -349,10 +354,10 @@ private fun WorkoutInProgressContent(
                             }
                             Box(
                                 Modifier
-                                    .padding(4.dp)
-                                    .size(48.dp)
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .size(40.dp)
                                     .clip(MaterialTheme.shapes.small)
-                                    .background(colors.primary.copy(alpha = 0.08f)),
+                                    .background(headerBackground),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -377,7 +382,7 @@ private fun WorkoutInProgressContent(
                                 ) {
                                     Surface(color = colors.surface) {
                                         Row(
-                                            Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                            Modifier.padding(horizontal = 2.dp, vertical = 1.dp)
                                         ) {
                                             val textFieldStyle = typography.body1.copy(
                                                 textAlign = TextAlign.Center,
@@ -390,13 +395,13 @@ private fun WorkoutInProgressContent(
                                                         shape = MaterialTheme.shapes.small,
                                                         border = BorderStroke(
                                                             1.dp,
-                                                            colors.onSurface.copy(alpha = 0.08f)
+                                                            colors.onSurface.copy(alpha = 0.06f)
                                                         )
                                                     ) {
                                                         Box(
                                                             Modifier
-                                                                .heightIn(min = 48.dp)
-                                                                .padding(horizontal = 6.dp),
+                                                                .heightIn(min = 44.dp)
+                                                                .padding(horizontal = 6.dp, vertical = 6.dp),
                                                             contentAlignment = Alignment.Center
                                                         ) {
                                                             innerTextField()
@@ -412,7 +417,7 @@ private fun WorkoutInProgressContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = reps,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.integer))
@@ -438,7 +443,7 @@ private fun WorkoutInProgressContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = weight,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.float))
@@ -460,7 +465,7 @@ private fun WorkoutInProgressContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = time,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.duration))
@@ -487,7 +492,7 @@ private fun WorkoutInProgressContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = distance,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.float))
@@ -500,10 +505,20 @@ private fun WorkoutInProgressContent(
                                                     decorationBox = decorationBox
                                                 )
                                             }
+                                            val completionBackground by animateColorAsState(
+                                                if (set.complete) lerp(
+                                                    colors.surface,
+                                                    colors.secondary,
+                                                    0.45f
+                                                ) else colors.onSurface.copy(alpha = 0.05f)
+                                            )
+                                            val completionContent = if (set.complete) {
+                                                contentColorFor(completionBackground)
+                                            } else colors.onSurface
                                             Box(
                                                 Modifier
-                                                    .padding(4.dp)
-                                                    .size(48.dp)
+                                                    .padding(3.dp)
+                                                    .size(44.dp)
                                                     .clip(MaterialTheme.shapes.small)
                                                     .toggleable(
                                                         value = set.complete,
@@ -511,13 +526,7 @@ private fun WorkoutInProgressContent(
                                                             viewModel.updateChecked(set, it)
                                                         },
                                                     )
-                                                    .background(
-                                                        animateColorAsState(
-                                                            if (set.complete) colors.secondary else colors.onSurface.copy(
-                                                                alpha = 0.06f
-                                                            )
-                                                        ).value
-                                                    ),
+                                                    .background(completionBackground),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 androidx.compose.animation.AnimatedVisibility(
@@ -528,7 +537,7 @@ private fun WorkoutInProgressContent(
                                                     Icon(
                                                         Icons.Default.Check,
                                                         stringResource(R.string.column_set_complete),
-                                                        tint = colors.onSecondary
+                                                        tint = completionContent
                                                     )
                                                 }
                                             }
@@ -542,12 +551,12 @@ private fun WorkoutInProgressContent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp)
-                            .height(52.dp),
+                            .height(48.dp),
                         shape = MaterialTheme.shapes.medium,
                         onClick = { viewModel.addSet(setGroup) },
                     ) {
                         Icon(Icons.Default.Add, null)
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.btn_add_set))
                     }
                 }
@@ -557,15 +566,15 @@ private fun WorkoutInProgressContent(
         item {
             Button(
                 modifier = Modifier
-                    .padding(top = 16.dp)
+                    .padding(top = 12.dp)
                     .fillMaxWidth()
-                    .height(72.dp),
+                    .height(60.dp),
                 shape = MaterialTheme.shapes.large,
                 elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
                 onClick = navToExercisePicker
             ) {
                 Icon(Icons.Default.Add, null)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.btn_add_exercise))
             }
 

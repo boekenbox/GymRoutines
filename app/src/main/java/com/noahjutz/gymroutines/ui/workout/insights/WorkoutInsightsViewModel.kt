@@ -116,6 +116,7 @@ class WorkoutInsightsViewModel(
                     weeklyVolume = weeklyVolume,
                     sessionComparison = sessionComparison,
                     prs = prComputation.events,
+                    currentPrs = CurrentPrsUi(prComputation.currentByType),
                     exerciseProgress = exerciseProgress,
                     consistency = consistency,
                     routineUtilization = routineUtilization,
@@ -387,6 +388,7 @@ private const val WEIGHT_ROUNDING_DECIMALS = 2
 internal data class PrComputationResult(
     val events: List<PrEventUi>,
     val eventsByWorkout: Map<Int, List<PrEventUi>>,
+    val currentByType: Map<PrType, List<PrEventUi>>,
 )
 
 internal data class WorkoutSetSample(
@@ -488,6 +490,9 @@ internal fun computePersonalRecords(
     val bestLoad = mutableMapOf<Int, Double>()
     val bestEst = mutableMapOf<Int, Double>()
     val bestRepsAtLoad = mutableMapOf<Int, MutableMap<Double, Int>>()
+    val bestLoadEvents = mutableMapOf<Int, PrEventUi>()
+    val bestEstEvents = mutableMapOf<Int, PrEventUi>()
+    val bestRepsEvents = mutableMapOf<Int, MutableMap<Double, PrEventUi>>()
     val events = mutableListOf<PrEventUi>()
     val perSession = mutableMapOf<Int, MutableList<PrEventUi>>()
 
@@ -515,6 +520,7 @@ internal fun computePersonalRecords(
                     events += event
                     sessionEvents += event
                     bestLoad[exerciseId] = load
+                    bestLoadEvents[exerciseId] = event
                 } else {
                     bestLoad[exerciseId] = max(previous, load)
                 }
@@ -539,6 +545,8 @@ internal fun computePersonalRecords(
                     events += event
                     sessionEvents += event
                     repsMap[loadKey] = reps
+                    val repsEvents = bestRepsEvents.getOrPut(exerciseId) { mutableMapOf() }
+                    repsEvents[loadKey] = event
                 }
             }
 
@@ -561,6 +569,7 @@ internal fun computePersonalRecords(
                     events += event
                     sessionEvents += event
                     bestEst[exerciseId] = normalizedEst
+                    bestEstEvents[exerciseId] = event
                 } else {
                     bestEst[exerciseId] = max(previous, normalizedEst)
                 }
@@ -572,7 +581,19 @@ internal fun computePersonalRecords(
     val sortedPerSession = perSession.mapValues { entry ->
         entry.value.sortedByDescending { it.occurredAt }
     }
-    return PrComputationResult(sortedEvents, sortedPerSession)
+    val locale = Locale.getDefault()
+    val nameComparator = compareBy<PrEventUi> { it.exerciseName.lowercase(locale) }
+    val loadEvents = bestLoadEvents.values.sortedWith(nameComparator)
+    val estEvents = bestEstEvents.values.sortedWith(nameComparator)
+    val repsEvents = bestRepsEvents.mapNotNull { (_, entries) ->
+        entries.values.maxWithOrNull(compareBy<PrEventUi>({ it.load ?: 0.0 }, { it.value }))
+    }.sortedWith(nameComparator)
+    val currentByType = mapOf(
+        PrType.Load to loadEvents,
+        PrType.RepsAtLoad to repsEvents,
+        PrType.EstimatedOneRm to estEvents
+    ).filterValues { it.isNotEmpty() }
+    return PrComputationResult(sortedEvents, sortedPerSession, currentByType)
 }
 
 internal fun normalizeWeight(raw: Double?): Double? {

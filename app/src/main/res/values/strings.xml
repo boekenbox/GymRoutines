@@ -55,6 +55,10 @@
     <string name="btn_save">Save</string>
     <string name="label_exercise_name">Exercise name</string>
     <string name="label_exercise_notes">Notes</string>
+    <string name="btn_add_notes">Add notes</string>
+    <string name="btn_edit_notes">Edit notes</string>
+    <string name="dialog_title_edit_notes">Edit notes for %1$s</string>
+    <string name="unnamed_exercise">Unnamed exercise</string>
     <string name="btn_more">More</string>
     <string name="btn_delete">Delete</string>
     <string name="dialog_item_set">this set</string>

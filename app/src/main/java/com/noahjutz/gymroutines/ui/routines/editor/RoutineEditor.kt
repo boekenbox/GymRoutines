@@ -47,6 +47,7 @@ import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.Routine
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroupWithSets
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
+import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
@@ -147,6 +148,12 @@ private fun ConfirmDeleteRoutineSetDialog(
     )
 }
 
+private data class ExerciseNotesDialogState(
+    val exerciseId: Int,
+    val name: String,
+    val notes: String,
+)
+
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun RoutineEditorContent(
@@ -155,6 +162,23 @@ private fun RoutineEditorContent(
     viewModel: RoutineEditorViewModel,
     navToExercisePicker: () -> Unit
 ) {
+    val sortedSetGroups by remember(setGroups) {
+        derivedStateOf { setGroups.sortedBy { it.group.position } }
+    }
+    var notesEditorState by remember { mutableStateOf<ExerciseNotesDialogState?>(null) }
+    notesEditorState?.let { state ->
+        val exerciseName = state.name.ifBlank { stringResource(R.string.unnamed_exercise) }
+        EditExerciseNotesDialog(
+            exerciseName = exerciseName,
+            initialNotes = state.notes,
+            onDismiss = { notesEditorState = null },
+            onConfirm = { updatedNotes ->
+                viewModel.updateExerciseNotes(state.exerciseId, updatedNotes)
+                notesEditorState = null
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
@@ -219,8 +243,10 @@ private fun RoutineEditorContent(
             )
         }
 
-        items(setGroups.sortedBy { it.group.position }, key = { it.group.id }) { setGroup ->
-            val exercise = viewModel.getExercise(setGroup.group.exerciseId)!!
+        items(sortedSetGroups, key = { it.group.id }) { setGroup ->
+            val exerciseState = viewModel.getExercise(setGroup.group.exerciseId)
+                .collectAsState(initial = null)
+            val exercise = exerciseState.value ?: return@items
             val headerColor = lerp(colors.surface, colors.primary, 0.18f)
             Card(
                 Modifier
@@ -239,8 +265,13 @@ private fun RoutineEditorContent(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val exerciseName = if (exercise.name.isBlank()) {
+                                stringResource(R.string.unnamed_exercise)
+                            } else {
+                                exercise.name
+                            }
                             Text(
-                                exercise.name,
+                                exerciseName,
                                 style = typography.h6,
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -266,7 +297,7 @@ private fun RoutineEditorContent(
                                         onClick = {
                                             expanded = false
                                             val id = setGroup.group.id
-                                            val toId = setGroups
+                                            val toId = sortedSetGroups
                                                 .find { it.group.position == setGroup.group.position - 1 }
                                                 ?.group
                                                 ?.id
@@ -281,7 +312,7 @@ private fun RoutineEditorContent(
                                         onClick = {
                                             expanded = false
                                             val id = setGroup.group.id
-                                            val toId = setGroups
+                                            val toId = sortedSetGroups
                                                 .find { it.group.position == setGroup.group.position + 1 }
                                                 ?.group
                                                 ?.id
@@ -318,9 +349,41 @@ private fun RoutineEditorContent(
                                 Text(
                                     text = trimmedNotes,
                                     style = typography.body2,
-                                    color = colors.onSurface.copy(alpha = 0.9f)
+                                    color = colors.onSurface.copy(alpha = 0.9f),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = {
+                                        notesEditorState = ExerciseNotesDialogState(
+                                            exerciseId = exercise.exerciseId,
+                                            name = exercise.name,
+                                            notes = exercise.notes
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = stringResource(R.string.btn_edit_notes),
+                                        tint = colors.primary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        TextButton(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            onClick = {
+                                notesEditorState = ExerciseNotesDialogState(
+                                    exerciseId = exercise.exerciseId,
+                                    name = exercise.name,
+                                    notes = exercise.notes
                                 )
                             }
+                        ) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.btn_add_notes))
                         }
                     }
                     Column(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {

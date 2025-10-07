@@ -139,8 +139,6 @@ class WorkoutInsightsViewModel(
                 prefs[AppPrefs.InsightsSelectedExercise.key] = exerciseId
             }
         }
-
-        return events.sortedByDescending { it.occurredAt } to perSession.mapValues { it.value.sortedByDescending { event -> event.occurredAt } }
     }
 
     private fun buildDurationChart(sessions: List<SessionComputation>): WorkoutDurationChartData? {

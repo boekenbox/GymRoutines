@@ -22,6 +22,8 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.round
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -87,7 +89,7 @@ class WorkoutInsightsViewModel(
                     metric = progressMetric,
                 )
 
-                val prComputation = computePrs(sessions)
+                val prComputation = computePersonalRecords(sessions)
 
                 val weeklyVolume = buildWeeklyVolume(sessions)
                 val sessionComparison = buildSessionComparison(sessions)
@@ -103,7 +105,7 @@ class WorkoutInsightsViewModel(
                         totalReps = session.totalReps,
                         avgLoadPerRep = session.avgLoadPerRep,
                         durationMinutes = session.durationMinutes,
-                        prCount = prComputation.second[session.workout.workoutId]?.size ?: 0,
+                        prCount = prComputation.eventsByWorkout[session.workout.workoutId]?.size ?: 0,
                     )
                 }
 
@@ -113,7 +115,7 @@ class WorkoutInsightsViewModel(
                     lastSessionSummary = summary,
                     weeklyVolume = weeklyVolume,
                     sessionComparison = sessionComparison,
-                    prs = prComputation.first,
+                    prs = prComputation.events,
                     exerciseProgress = exerciseProgress,
                     consistency = consistency,
                     routineUtilization = routineUtilization,
@@ -309,98 +311,6 @@ class WorkoutInsightsViewModel(
         return ExerciseProgressUi(exercises = exercises.take(5), selectedExerciseId = null, metric = ExerciseProgressMetric.EstimatedOneRm)
     }
 
-    private fun computePrs(
-        sessions: List<SessionComputation>,
-    ): Pair<List<PrEventUi>, Map<Int, List<PrEventUi>>> {
-        val bestLoad = mutableMapOf<Int, Double>()
-        val bestEst = mutableMapOf<Int, Double>()
-        val bestRepsAtLoad = mutableMapOf<Int, MutableMap<Double, Int>>()
-        val events = mutableListOf<PrEventUi>()
-        val perSession = mutableMapOf<Int, MutableList<PrEventUi>>()
-
-        sessions.forEach { session ->
-            var setIndex = 0
-            session.sets.forEach { sample ->
-                val load = sample.weight
-                val reps = sample.reps
-                val exerciseId = sample.exerciseId
-                val sessionEvents = perSession.getOrPut(session.workout.workoutId) { mutableListOf() }
-
-                if (load != null) {
-                    val previous = bestLoad[exerciseId] ?: Double.MIN_VALUE
-                    if (load > previous) {
-                        val event = PrEventUi(
-                            id = "${session.workout.workoutId}-${exerciseId}-load-$setIndex",
-                            workoutId = session.workout.workoutId,
-                            setIndex = setIndex,
-                            exerciseName = sample.exerciseName,
-                            type = PrType.Load,
-                            value = load,
-                            reps = reps,
-                            load = load,
-                            occurredAt = session.startInstant
-                        )
-                        events += event
-                        sessionEvents += event
-                        bestLoad[exerciseId] = load
-                    } else {
-                        bestLoad[exerciseId] = max(previous, load)
-                    }
-                }
-
-                if (load != null && reps != null) {
-                    val loadKey = load
-                    val repsMap = bestRepsAtLoad.getOrPut(exerciseId) { mutableMapOf() }
-                    val previous = repsMap[loadKey] ?: Int.MIN_VALUE
-                    if (reps > previous) {
-                        val event = PrEventUi(
-                            id = "${session.workout.workoutId}-${exerciseId}-reps-$setIndex",
-                            workoutId = session.workout.workoutId,
-                            setIndex = setIndex,
-                            exerciseName = sample.exerciseName,
-                            type = PrType.RepsAtLoad,
-                            value = reps.toDouble(),
-                            reps = reps,
-                            load = load,
-                            occurredAt = session.startInstant
-                        )
-                        events += event
-                        sessionEvents += event
-                        repsMap[loadKey] = reps
-                    } else {
-                        repsMap[loadKey] = max(previous, reps)
-                    }
-                }
-
-                if (load != null) {
-                    val est = reps?.let { epley(load, it) } ?: load
-                    val previous = bestEst[exerciseId] ?: Double.MIN_VALUE
-                    if (est > previous) {
-                        val event = PrEventUi(
-                            id = "${session.workout.workoutId}-${exerciseId}-est-$setIndex",
-                            workoutId = session.workout.workoutId,
-                            setIndex = setIndex,
-                            exerciseName = sample.exerciseName,
-                            type = PrType.EstimatedOneRm,
-                            value = est,
-                            reps = reps,
-                            load = load,
-                            occurredAt = session.startInstant
-                        )
-                        events += event
-                        sessionEvents += event
-                        bestEst[exerciseId] = est
-                    } else {
-                        bestEst[exerciseId] = max(previous, est)
-                    }
-                }
-                setIndex++
-            }
-        }
-
-        return events.sortedByDescending { it.occurredAt } to perSession.mapValues { it.value.sortedByDescending { event -> event.occurredAt } }
-    }
-
     private fun buildSession(
         session: WorkoutWithSetGroups,
         routineNames: Map<Int, String>,
@@ -421,18 +331,19 @@ class WorkoutInsightsViewModel(
             val exerciseId = group.group.exerciseId
             val exerciseName = exerciseNames[exerciseId] ?: "Exercise #$exerciseId"
             val normalized = normalizedNames[exerciseId] ?: exerciseName.trim().lowercase(Locale.getDefault())
-            group.sets.forEachIndexed { index, set ->
+            group.sets.forEach { set ->
+                val normalizedWeight = normalizeWeight(set.weight)
                 sets += WorkoutSetSample(
                     exerciseId = exerciseId,
                     exerciseName = exerciseName,
                     normalizedExerciseName = normalized,
                     reps = set.reps,
-                    weight = set.weight,
+                    weight = normalizedWeight,
                     rawSet = set,
                     startInstant = startInstant
                 )
                 exerciseSummaries.getOrPut(exerciseId) { ExerciseSummaryBuilder(exerciseId, exerciseName) }
-                    .addSet(set)
+                    .addSet(set, normalizedWeight)
             }
         }
 
@@ -468,92 +379,220 @@ class WorkoutInsightsViewModel(
         return "%04d-W%02d".format(year, week)
     }
 
-    private fun epley(load: Double, reps: Int): Double {
-        val capped = min(reps, 12)
-        return load * (1 + capped / 30.0)
-    }
+}
 
-    private data class WorkoutSetSample(
-        val exerciseId: Int,
-        val exerciseName: String,
-        val normalizedExerciseName: String,
-        val reps: Int?,
-        val weight: Double?,
-        val rawSet: WorkoutSet,
-        val startInstant: Instant,
-    )
+internal const val WEIGHT_EPSILON = 1e-3
+private const val WEIGHT_ROUNDING_DECIMALS = 2
 
-    private class ExerciseSummaryBuilder(
-        private val exerciseId: Int,
-        private val name: String,
-    ) {
-        private var totalVolume = 0.0
-        private var totalReps = 0
-        private var loadSum = 0.0
-        private var loadCount = 0
-        private var bestLoad = 0.0
-        private var bestEst = 0.0
+internal data class PrComputationResult(
+    val events: List<PrEventUi>,
+    val eventsByWorkout: Map<Int, List<PrEventUi>>,
+)
 
-        fun addSet(set: WorkoutSet) {
-            val reps = set.reps ?: 0
-            val load = set.weight ?: 0.0
-            if (reps > 0 && load > 0.0) {
-                totalVolume += reps * load
-                totalReps += reps
-                loadSum += load
+internal data class WorkoutSetSample(
+    val exerciseId: Int,
+    val exerciseName: String,
+    val normalizedExerciseName: String,
+    val reps: Int?,
+    val weight: Double?,
+    val rawSet: WorkoutSet,
+    val startInstant: Instant,
+)
+
+internal class ExerciseSummaryBuilder(
+    private val exerciseId: Int,
+    private val name: String,
+) {
+    private var totalVolume = 0.0
+    private var totalReps = 0
+    private var loadSum = 0.0
+    private var loadCount = 0
+    private var bestLoad = 0.0
+    private var bestEst = 0.0
+
+    fun addSet(set: WorkoutSet, normalizedWeight: Double?) {
+        val reps = set.reps ?: 0
+        if (reps > 0) {
+            totalReps += reps
+        }
+
+        if (normalizedWeight != null) {
+            if (reps > 0) {
+                totalVolume += reps * normalizedWeight
+                loadSum += normalizedWeight
                 loadCount += 1
-                if (load > bestLoad) {
-                    bestLoad = load
+                if (normalizedWeight > bestLoad) {
+                    bestLoad = normalizedWeight
                 }
-                val est = if (reps > 0) load * (1 + min(reps, 12) / 30.0) else load
+                val est = epley(normalizedWeight, reps)
                 if (est > bestEst) {
                     bestEst = est
                 }
-            } else if (reps > 0) {
-                totalReps += reps
+            } else {
+                if (normalizedWeight > bestLoad) {
+                    bestLoad = normalizedWeight
+                }
+                if (normalizedWeight > bestEst) {
+                    bestEst = normalizedWeight
+                }
             }
-        }
-
-        fun build(): ExerciseSessionSummary {
-            return ExerciseSessionSummary(
-                exerciseId = exerciseId,
-                exerciseName = name,
-                totalVolume = totalVolume,
-                totalReps = totalReps,
-                averageLoad = if (loadCount == 0) 0.0 else loadSum / loadCount,
-                bestLoad = if (bestLoad == 0.0) null else bestLoad,
-                bestEst = if (bestEst == 0.0) null else bestEst
-            )
         }
     }
 
-    private data class ExerciseSessionSummary(
-        val exerciseId: Int,
-        val exerciseName: String,
-        val totalVolume: Double,
-        val totalReps: Int,
-        val averageLoad: Double,
-        val bestLoad: Double?,
-        val bestEst: Double?
-    )
+    fun build(): ExerciseSessionSummary {
+        return ExerciseSessionSummary(
+            exerciseId = exerciseId,
+            exerciseName = name,
+            totalVolume = totalVolume,
+            totalReps = totalReps,
+            averageLoad = if (loadCount == 0) 0.0 else loadSum / loadCount,
+            bestLoad = if (bestLoad == 0.0) null else bestLoad,
+            bestEst = if (bestEst == 0.0) null else bestEst,
+        )
+    }
+}
 
-    private class DailyBest(
-        var bestLoad: Double,
-        var bestEst: Double,
-        var label: String? = null,
-    )
+internal data class ExerciseSessionSummary(
+    val exerciseId: Int,
+    val exerciseName: String,
+    val totalVolume: Double,
+    val totalReps: Int,
+    val averageLoad: Double,
+    val bestLoad: Double?,
+    val bestEst: Double?,
+)
 
-    private data class SessionComputation(
-        val workout: Workout,
-        val routineName: String,
-        val date: LocalDate,
-        val durationMinutes: Double?,
-        val totalVolume: Double,
-        val totalReps: Int,
-        val avgLoadPerRep: Double,
-        val exerciseSummaries: Map<Int, ExerciseSessionSummary>,
-        val sets: List<WorkoutSetSample>,
-        val startInstant: Instant,
-        val exerciseDailyBest: Map<Int, DailyBest>,
-    )
+internal class DailyBest(
+    var bestLoad: Double,
+    var bestEst: Double,
+    var label: String? = null,
+)
+
+internal data class SessionComputation(
+    val workout: Workout,
+    val routineName: String,
+    val date: LocalDate,
+    val durationMinutes: Double?,
+    val totalVolume: Double,
+    val totalReps: Int,
+    val avgLoadPerRep: Double,
+    val exerciseSummaries: Map<Int, ExerciseSessionSummary>,
+    val sets: List<WorkoutSetSample>,
+    val startInstant: Instant,
+    val exerciseDailyBest: Map<Int, DailyBest>,
+)
+
+internal fun computePersonalRecords(
+    sessions: List<SessionComputation>,
+): PrComputationResult {
+    val bestLoad = mutableMapOf<Int, Double>()
+    val bestEst = mutableMapOf<Int, Double>()
+    val bestRepsAtLoad = mutableMapOf<Int, MutableMap<Double, Int>>()
+    val events = mutableListOf<PrEventUi>()
+    val perSession = mutableMapOf<Int, MutableList<PrEventUi>>()
+
+    sessions.forEach { session ->
+        session.sets.forEachIndexed { setIndex, sample ->
+            val load = sample.weight
+            val reps = sample.reps
+            val exerciseId = sample.exerciseId
+            val sessionEvents = perSession.getOrPut(session.workout.workoutId) { mutableListOf() }
+
+            if (load != null) {
+                val previous = bestLoad[exerciseId]
+                if (previous == null || isGreater(load, previous)) {
+                    val event = PrEventUi(
+                        id = "${session.workout.workoutId}-${exerciseId}-load-$setIndex",
+                        workoutId = session.workout.workoutId,
+                        setIndex = setIndex,
+                        exerciseName = sample.exerciseName,
+                        type = PrType.Load,
+                        value = load,
+                        reps = reps,
+                        load = load,
+                        occurredAt = session.startInstant,
+                    )
+                    events += event
+                    sessionEvents += event
+                    bestLoad[exerciseId] = load
+                } else {
+                    bestLoad[exerciseId] = max(previous, load)
+                }
+            }
+
+            if (load != null && reps != null && reps > 0) {
+                val loadKey = load
+                val repsMap = bestRepsAtLoad.getOrPut(exerciseId) { mutableMapOf() }
+                val previous = repsMap[loadKey]
+                if (previous == null || reps > previous) {
+                    val event = PrEventUi(
+                        id = "${session.workout.workoutId}-${exerciseId}-reps-$setIndex",
+                        workoutId = session.workout.workoutId,
+                        setIndex = setIndex,
+                        exerciseName = sample.exerciseName,
+                        type = PrType.RepsAtLoad,
+                        value = reps.toDouble(),
+                        reps = reps,
+                        load = load,
+                        occurredAt = session.startInstant,
+                    )
+                    events += event
+                    sessionEvents += event
+                    repsMap[loadKey] = reps
+                }
+            }
+
+            if (load != null) {
+                val est = reps?.takeIf { it > 0 }?.let { epley(load, it) } ?: load
+                val normalizedEst = roundToDecimals(est, WEIGHT_ROUNDING_DECIMALS)
+                val previous = bestEst[exerciseId]
+                if (previous == null || isGreater(normalizedEst, previous)) {
+                    val event = PrEventUi(
+                        id = "${session.workout.workoutId}-${exerciseId}-est-$setIndex",
+                        workoutId = session.workout.workoutId,
+                        setIndex = setIndex,
+                        exerciseName = sample.exerciseName,
+                        type = PrType.EstimatedOneRm,
+                        value = normalizedEst,
+                        reps = reps,
+                        load = load,
+                        occurredAt = session.startInstant,
+                    )
+                    events += event
+                    sessionEvents += event
+                    bestEst[exerciseId] = normalizedEst
+                } else {
+                    bestEst[exerciseId] = max(previous, normalizedEst)
+                }
+            }
+        }
+    }
+
+    val sortedEvents = events.sortedByDescending { it.occurredAt }
+    val sortedPerSession = perSession.mapValues { entry ->
+        entry.value.sortedByDescending { it.occurredAt }
+    }
+    return PrComputationResult(sortedEvents, sortedPerSession)
+}
+
+internal fun normalizeWeight(raw: Double?): Double? {
+    val weight = raw ?: return null
+    if (!weight.isFinite() || weight <= 0.0) return null
+    val rounded = roundToDecimals(weight, WEIGHT_ROUNDING_DECIMALS)
+    return if (rounded <= 0.0) null else rounded
+}
+
+internal fun roundToDecimals(value: Double, decimals: Int): Double {
+    if (decimals <= 0) return round(value)
+    val factor = 10.0.pow(decimals)
+    return round(value * factor) / factor
+}
+
+internal fun epley(load: Double, reps: Int): Double {
+    val capped = min(reps, 12)
+    return load * (1 + capped / 30.0)
+}
+
+private fun isGreater(candidate: Double, current: Double): Boolean {
+    return candidate - current > WEIGHT_EPSILON
 }

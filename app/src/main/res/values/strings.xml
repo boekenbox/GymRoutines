@@ -23,7 +23,6 @@
     <string name="btn_add_set">Add Set</string>
     <string name="column_reps">Reps</string>
     <string name="column_weight">Weight</string>
-    <string name="column_weight_with_unit">Weight (kg)</string>
     <string name="column_time">Time</string>
     <string name="column_distance">Distance</string>
     <string name="column_set_complete">Set Complete</string>
@@ -98,11 +97,6 @@
     <string name="dialog_title_discard_workout">Discard Workout?</string>
     <string name="dialog_title_finish_workout">Finish Workout?</string>
     <string name="dialog_confirm_finish_workout">Finish</string>
-    <string name="dialog_title_delete_set">Remove set?</string>
-    <string name="dialog_body_delete_set">This set will be deleted from the workout.</string>
-    <string name="dialog_confirm_delete_set">Remove</string>
-    <string name="snackbar_set_removed">Set removed</string>
-    <string name="action_undo">Undo</string>
     <string name="chart_workout_duration">Workout duration</string>
     <string name="chart_insufficient_data">Not enough data.</string>
     <string name="screen_view_workout">View Workout</string>

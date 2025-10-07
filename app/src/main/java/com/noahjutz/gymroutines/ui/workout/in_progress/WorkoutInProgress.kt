@@ -422,7 +422,7 @@ private fun WorkoutInProgressContent(
                         setGroup.sets.forEachIndexed { index, set ->
                             key(set.workoutSetId) {
                                 val dismissState = rememberDismissState(
-                                    confirmStateChange = { value ->
+                                    confirmValueChange = { value ->
                                         if (value != DismissValue.Default) {
                                             // Ask for confirmation before removing the set via swipe.
                                             setPendingDeletion = set

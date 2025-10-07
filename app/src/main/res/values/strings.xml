@@ -112,6 +112,14 @@
     <string name="insights_prs_history_title">PR history</string>
     <string name="insights_prs_view_all">View all PRs</string>
     <string name="insights_prs_empty">No PRs yet. Keep training!</string>
+    <string name="insights_prs_current_title">Current PRs</string>
+    <string name="insights_prs_current_empty">No PRs recorded yet.</string>
+    <string name="insights_prs_history_section_title">History</string>
+    <string name="insights_pr_type_load">Load</string>
+    <string name="insights_pr_type_reps_at_load">Reps @ load</string>
+    <string name="insights_pr_type_estimated_one_rm">Est. 1RM</string>
+    <string name="insights_pr_value_weight">%1$s %2$s</string>
+    <string name="insights_pr_value_reps_at_load">%1$d @ %2$s %3$s</string>
     <string name="insights_weekly_volume_title">Weekly volume</string>
     <string name="insights_volume_empty">Log a few weeks of workouts to unlock this insight.</string>
     <string name="insights_volume_need_more_data">Log at least two weeks to compare.</string>

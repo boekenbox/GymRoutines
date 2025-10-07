@@ -221,7 +221,7 @@ private fun RoutineEditorContent(
 
         items(setGroups.sortedBy { it.group.position }, key = { it.group.id }) { setGroup ->
             val exercise = viewModel.getExercise(setGroup.group.exerciseId)!!
-            val headerColor = lerp(colors.surface, colors.primary, 0.32f)
+            val headerColor = lerp(colors.surface, colors.primary, 0.18f)
             Card(
                 Modifier
                     .fillMaxWidth()
@@ -230,7 +230,11 @@ private fun RoutineEditorContent(
                 shape = RoundedCornerShape(22.dp),
             ) {
                 Column {
-                    Surface(Modifier.fillMaxWidth(), color = headerColor) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = headerColor,
+                        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
+                    ) {
                         Row(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -292,7 +296,39 @@ private fun RoutineEditorContent(
                             }
                         }
                     }
+                    val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
+                    if (trimmedNotes.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .fillMaxWidth(),
+                            color = colors.primary.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = stringResource(R.string.label_exercise_notes),
+                                    tint = colors.primary
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = trimmedNotes,
+                                    style = typography.body2,
+                                    color = colors.onSurface.copy(alpha = 0.9f)
+                                )
+                            }
+                        }
+                    }
                     Column(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
+                        Divider(
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = colors.onSurface.copy(alpha = 0.08f)
+                        )
                         Row(Modifier.padding(horizontal = 2.dp)) {
                             val headerTextStyle = TextStyle(
                                 color = colors.onSurface,

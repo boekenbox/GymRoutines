@@ -86,7 +86,7 @@ android {
             )
         )
     }
-    namespace = "com.boekenbox.gymroutines"
+    namespace = "com.noahjutz.gymroutines"
 }
 
 dependencies {

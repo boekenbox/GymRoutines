@@ -155,6 +155,14 @@ class WorkoutInProgressViewModel(
         }
     }
 
+    fun updateExerciseNotes(exerciseId: Int, notes: String) {
+        viewModelScope.launch {
+            exerciseRepository.getExercise(exerciseId)?.let { exercise ->
+                exerciseRepository.update(exercise.copy(notes = notes))
+            }
+        }
+    }
+
     fun updateChecked(set: WorkoutSet, checked: Boolean) {
         viewModelScope.launch {
             workoutRepository.update(set.copy(complete = checked))

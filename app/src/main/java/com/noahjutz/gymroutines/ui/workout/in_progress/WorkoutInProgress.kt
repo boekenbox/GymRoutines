@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.rememberDismissState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -86,6 +87,7 @@ import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
+import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
@@ -144,6 +146,12 @@ fun WorkoutInProgress(
     }
 }
 
+private data class ExerciseNotesDialogState(
+    val exerciseId: Int,
+    val name: String,
+    val notes: String,
+)
+
 @OptIn(
     ExperimentalMaterialApi::class,
     ExperimentalFoundationApi::class
@@ -173,6 +181,23 @@ private fun WorkoutInProgressContent(
             viewModel.cancelWorkout(popBackStack)
         }
     )
+
+    val sortedSetGroups by remember(workout.setGroups) {
+        derivedStateOf { workout.setGroups.sortedBy { it.group.position } }
+    }
+    var notesEditorState by remember { mutableStateOf<ExerciseNotesDialogState?>(null) }
+    notesEditorState?.let { state ->
+        val exerciseName = state.name.ifBlank { stringResource(R.string.unnamed_exercise) }
+        EditExerciseNotesDialog(
+            exerciseName = exerciseName,
+            initialNotes = state.notes,
+            onDismiss = { notesEditorState = null },
+            onConfirm = { updatedNotes ->
+                viewModel.updateExerciseNotes(state.exerciseId, updatedNotes)
+                notesEditorState = null
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -208,30 +233,35 @@ private fun WorkoutInProgressContent(
             )
         }
 
-        items(workout.setGroups.sortedBy { it.group.position }, key = { it.group.id }) { setGroup ->
-            val exercise by viewModel.getExercise(setGroup.group.exerciseId)
+        items(sortedSetGroups, key = { it.group.id }) { setGroup ->
+            val exerciseState = viewModel.getExercise(setGroup.group.exerciseId)
                 .collectAsState(initial = null)
-            val headerColor = lerp(colors.surface, colors.primary, 0.32f)
+            val exercise = exerciseState.value
+            val headerColor = lerp(colors.surface, colors.primary, 0.24f)
             Card(
                 Modifier
                     .fillMaxWidth()
                     .animateItemPlacement()
                     .padding(top = 14.dp),
-                shape = MaterialTheme.shapes.medium,
+                shape = MaterialTheme.shapes.large,
             ) {
                 Column {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         color = headerColor,
-                        shape = MaterialTheme.shapes.medium
+                        shape = MaterialTheme.shapes.large
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val exerciseName = when {
+                                exercise?.name.isNullOrBlank() -> stringResource(R.string.unnamed_exercise)
+                                else -> exercise!!.name
+                            }
                             Text(
-                                exercise?.name.toString(),
+                                exerciseName,
                                 style = typography.h6.copy(
                                     fontWeight = FontWeight.SemiBold,
                                     color = contentColorFor(headerColor)
@@ -258,7 +288,7 @@ private fun WorkoutInProgressContent(
                                         onClick = {
                                             expanded = false
                                             val id = setGroup.group.id
-                                            val toId = workout.setGroups
+                                            val toId = sortedSetGroups
                                                 .find { it.group.position == setGroup.group.position - 1 }
                                                 ?.group
                                                 ?.id
@@ -273,7 +303,7 @@ private fun WorkoutInProgressContent(
                                         onClick = {
                                             expanded = false
                                             val id = setGroup.group.id
-                                            val toId = workout.setGroups
+                                            val toId = sortedSetGroups
                                                 .find { it.group.position == setGroup.group.position + 1 }
                                                 ?.group
                                                 ?.id
@@ -288,6 +318,69 @@ private fun WorkoutInProgressContent(
                             }
                         }
                     }
+
+                    if (exercise != null) {
+                        val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
+                        if (trimmedNotes.isNotEmpty()) {
+                            Surface(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                                    .fillMaxWidth(),
+                                color = colors.primary.copy(alpha = 0.08f),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = stringResource(R.string.label_exercise_notes),
+                                        tint = colors.primary
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(
+                                        text = trimmedNotes,
+                                        style = typography.body2,
+                                        color = colors.onSurface.copy(alpha = 0.9f),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            notesEditorState = ExerciseNotesDialogState(
+                                                exerciseId = exercise.exerciseId,
+                                                name = exercise.name,
+                                                notes = exercise.notes
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = stringResource(R.string.btn_edit_notes),
+                                            tint = colors.primary
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            TextButton(
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                onClick = {
+                                    notesEditorState = ExerciseNotesDialogState(
+                                        exerciseId = exercise.exerciseId,
+                                        name = exercise.name,
+                                        notes = exercise.notes
+                                    )
+                                }
+                            ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.btn_add_notes))
+                            }
+                        }
+                    }
+
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                         Row(Modifier.padding(horizontal = 2.dp)) {
                             val headerTextStyle = typography.caption.copy(

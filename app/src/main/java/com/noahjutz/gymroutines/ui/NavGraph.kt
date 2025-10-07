@@ -51,6 +51,7 @@ import com.noahjutz.gymroutines.ui.settings.data.DataSettings
 import com.noahjutz.gymroutines.ui.settings.general.GeneralSettings
 import com.noahjutz.gymroutines.ui.workout.completed.WorkoutCompleted
 import com.noahjutz.gymroutines.ui.workout.in_progress.WorkoutInProgress
+import com.noahjutz.gymroutines.ui.workout.insights.PrHistoryScreen
 import com.noahjutz.gymroutines.ui.workout.insights.WorkoutInsights
 import com.noahjutz.gymroutines.ui.workout.viewer.WorkoutViewer
 import kotlin.time.ExperimentalTime
@@ -65,6 +66,7 @@ enum class Screen {
     exercisePicker,
     workoutInProgress,
     workoutViewer,
+    prHistory,
     settings,
     appearanceSettings,
     dataSettings,
@@ -96,7 +98,8 @@ fun NavGraph(
             composable(Screen.insights.name) {
                 WorkoutInsights(
                     navToWorkout = { workoutId -> navController.navigate("${Screen.workoutViewer}/$workoutId") },
-                    navToSettings = { navController.navigate(Screen.settings.name) }
+                    navToSettings = { navController.navigate(Screen.settings.name) },
+                    navToPrHistory = { navController.navigate(Screen.prHistory.name) }
                 )
             }
             composable(
@@ -107,6 +110,12 @@ fun NavGraph(
                 WorkoutViewer(
                     workoutId = workoutId,
                     popBackStack = { navController.popBackStack() },
+                )
+            }
+            composable(Screen.prHistory.name) {
+                PrHistoryScreen(
+                    popBackStack = { navController.popBackStack() },
+                    navToWorkout = { workoutId -> navController.navigate("${Screen.workoutViewer}/$workoutId") }
                 )
             }
             composable(Screen.routineList.name) {

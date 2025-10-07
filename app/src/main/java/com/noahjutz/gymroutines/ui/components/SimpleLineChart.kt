@@ -22,20 +22,24 @@ fun SimpleLineChart(
     check(data.isNotEmpty()) { "data passed to SimpleLineChart must not be empty" }
 
     Canvas(modifier) {
-        val minX = minOf(data.minOf { it.first }, secondaryData.minOf { it.first })
-        val maxX = maxOf(data.maxOf { it.first }, secondaryData.maxOf { it.first })
-        val minY = minOf(data.minOf { it.second }, secondaryData.minOf { it.second })
-        val maxY = maxOf(data.maxOf { it.second }, secondaryData.maxOf { it.second })
+        val combined = if (secondaryData.isEmpty()) data else data + secondaryData
+        val minX = combined.minOf { it.first }
+        val maxX = combined.maxOf { it.first }
+        val minY = combined.minOf { it.second }
+        val maxY = combined.maxOf { it.second }
+
+        val xRange = (maxX - minX).takeIf { it != 0f } ?: 1f
+        val yRange = (maxY - minY).takeIf { it != 0f } ?: 1f
 
         val offsets = data.map { (x, y) ->
-            val xAdjusted = ((x - minX) / (maxX - minX)) * size.width
-            val yAdjusted = (1 - ((y - minY) / (maxY - minY))) * size.height
+            val xAdjusted = ((x - minX) / xRange) * size.width
+            val yAdjusted = (1 - ((y - minY) / yRange)) * size.height
             Offset(xAdjusted, yAdjusted)
         }
 
         val secondaryOffsets = secondaryData.map { (x, y) ->
-            val xAdjusted = ((x - minX) / (maxX - minX)) * size.width
-            val yAdjusted = (1 - ((y - minY) / (maxY - minY))) * size.height
+            val xAdjusted = ((x - minX) / xRange) * size.width
+            val yAdjusted = (1 - ((y - minY) / yRange)) * size.height
             Offset(xAdjusted, yAdjusted)
         }
 

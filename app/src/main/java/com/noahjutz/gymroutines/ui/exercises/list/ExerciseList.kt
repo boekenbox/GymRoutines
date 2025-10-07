@@ -18,7 +18,6 @@
 
 package com.noahjutz.gymroutines.ui.exercises.list
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -92,17 +91,22 @@ fun ExerciseList(
             )
         },
     ) { paddingValues ->
-        val exercises by viewModel.exercises.collectAsState(null)
+        val exercises by viewModel.exercises.collectAsState()
 
-        Crossfade(exercises != null, Modifier.padding(paddingValues)) { isReady ->
-            if (isReady) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            val exerciseList = exercises
+            if (exerciseList == null) {
+                ExerciseListPlaceholder()
+            } else {
                 ExerciseListContent(
                     navToExerciseEditor = navToExerciseEditor,
-                    exercises = exercises ?: emptyList(),
+                    exercises = exerciseList,
                     viewModel = viewModel
                 )
-            } else {
-                ExerciseListPlaceholder()
             }
         }
     }
@@ -118,12 +122,13 @@ private fun ExerciseListContent(
     viewModel: ExerciseListViewModel
 ) {
     val scope = rememberCoroutineScope()
+    val searchQuery by viewModel.nameFilter.collectAsState()
+
     LazyColumn(
         modifier = Modifier.fillMaxHeight(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
-            val searchQuery by viewModel.nameFilter.collectAsState()
             SearchBar(
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 12.dp)
@@ -133,7 +138,11 @@ private fun ExerciseListContent(
             )
         }
 
-        items(exercises.filter { !it.hidden }, { it.exerciseId }) { exercise ->
+        items(
+            items = exercises,
+            key = { it.exerciseId },
+            contentType = { "exercise" }
+        ) { exercise ->
             val dismissState = rememberDismissState()
 
             SwipeToDismiss(

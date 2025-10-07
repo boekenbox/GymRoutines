@@ -19,47 +19,70 @@
 package com.noahjutz.gymroutines.ui.exercises.picker
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.noahjutz.gymroutines.data.ExerciseRepository
 import com.noahjutz.gymroutines.data.domain.Exercise
-import java.util.*
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 class ExercisePickerViewModel(
     exerciseRepository: ExerciseRepository,
 ) : ViewModel() {
     private val _nameFilter = MutableStateFlow("")
     private val exercises = exerciseRepository.exercises
-    private val _selectedExercises = MutableStateFlow(emptyList<Exercise>())
+    private val _selectedExerciseIds = MutableStateFlow(emptyList<Int>())
 
     fun search(name: String) {
         _nameFilter.value = name
     }
 
     fun addExercise(exercise: Exercise) {
-        _selectedExercises.value =
-            _selectedExercises.value.toMutableList().apply { add(exercise) }
+        val id = exercise.exerciseId
+        _selectedExerciseIds.update { current ->
+            if (current.contains(id)) current else current + id
+        }
     }
 
     fun removeExercise(exercise: Exercise) {
-        _selectedExercises.value =
-            _selectedExercises.value.toMutableList().apply { remove(exercise) }
+        val id = exercise.exerciseId
+        _selectedExerciseIds.update { current ->
+            current.filterNot { it == id }
+        }
     }
 
     val nameFilter = _nameFilter.asStateFlow()
 
-    val allExercises = exercises.combine(_nameFilter) { exercises, nameFilter ->
-        exercises.filter {
-            it.name.lowercase(Locale.getDefault())
-                .contains(nameFilter.lowercase(Locale.getDefault()))
+    val allExercises = exercises
+        .combine(_nameFilter) { exercises, nameFilter ->
+            val locale = Locale.getDefault()
+            val normalizedFilter = nameFilter.trim().lowercase(locale)
+            val visibleExercises = exercises.filterNot(Exercise::hidden)
+
+            if (normalizedFilter.isEmpty()) {
+                visibleExercises
+            } else {
+                visibleExercises.filter { exercise ->
+                    exercise.name.lowercase(locale).contains(normalizedFilter)
+                }
+            }
         }
-    }
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val selectedExercises = _selectedExercises.asStateFlow()
+    private val selectedExercises = _selectedExerciseIds.asStateFlow()
 
-    val selectedExerciseIds = selectedExercises.map { it.map { it.exerciseId } }
+    val selectedExerciseIds = selectedExercises
 
-    fun exercisesContains(exercise: Exercise) = selectedExercises.map { it.contains(exercise) }
+    fun exercisesContains(exercise: Exercise) =
+        selectedExercises.map { it.contains(exercise.exerciseId) }
 }

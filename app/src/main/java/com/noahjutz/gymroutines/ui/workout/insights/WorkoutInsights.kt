@@ -358,20 +358,6 @@ fun PrRow(pr: PrEventUi, onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-private fun PrType.displayName(): String = when (this) {
-    PrType.Load -> "Load"
-    PrType.RepsAtLoad -> "Reps @ Load"
-    PrType.EstimatedOneRm -> "Est 1RM"
-}
-
-private fun PrEventUi.displayValue(): String {
-    return when (type) {
-        PrType.Load -> formatWeight(value)
-        PrType.RepsAtLoad -> String.format(Locale.getDefault(), "%d @ %s", value.roundToInt(), formatWeight(load ?: 0.0))
-        PrType.EstimatedOneRm -> String.format(Locale.getDefault(), "%.1f", value)
-    }
-}
-
 @Composable
 private fun WeeklyVolumeChart(points: List<WeeklyVolumePoint>) {
     val maxVolume = points.maxOfOrNull { it.totalVolume } ?: 1.0
@@ -614,8 +600,3 @@ private fun InsightCard(
         }
     }
 }
-
-private fun formatWeight(value: Double): String {
-    return String.format(Locale.getDefault(), "%.1f", value)
-}
-

@@ -61,6 +61,10 @@ data class PrEventUi(
     val occurredAt: Instant
 )
 
+data class CurrentPrsUi(
+    val byType: Map<PrType, List<PrEventUi>> = emptyMap()
+)
+
 data class ConsistencyUi(
     val workoutsPerWeekAverage: Double,
     val daysSinceLastWorkout: Long?,
@@ -100,6 +104,7 @@ data class WorkoutInsightsUiState(
     val weeklyVolume: WeeklyVolumeOverview? = null,
     val sessionComparison: SessionComparisonUi? = null,
     val prs: List<PrEventUi> = emptyList(),
+    val currentPrs: CurrentPrsUi = CurrentPrsUi(),
     val exerciseProgress: ExerciseProgressUi = ExerciseProgressUi(emptyList(), null, ExerciseProgressMetric.EstimatedOneRm),
     val consistency: ConsistencyUi? = null,
     val routineUtilization: RoutineUtilizationUi? = null

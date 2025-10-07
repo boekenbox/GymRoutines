@@ -127,6 +127,7 @@ class RoutineRepository(private val routineDao: RoutineDao) {
 
 class WorkoutRepository(private val workoutDao: WorkoutDao) {
     val workouts = workoutDao.getWorkouts()
+    val workoutsWithSetGroups = workoutDao.getWorkoutsWithSetGroups()
 
     suspend fun insert(workout: Workout): Long {
         return workoutDao.insert(workout)

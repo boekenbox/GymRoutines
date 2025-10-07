@@ -60,6 +60,16 @@ sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {
         key = booleanPreferencesKey("updateRoutineAfterWorkout"),
         defaultValue = false
     )
+
+    data object InsightsProgressMetric : AppPrefs<String>(
+        key = stringPreferencesKey("insightsProgressMetric"),
+        defaultValue = "EstimatedOneRm",
+    )
+
+    data object InsightsSelectedExercise : AppPrefs<Int>(
+        key = intPreferencesKey("insightsSelectedExercise"),
+        defaultValue = -1,
+    )
 }
 
 suspend fun DataStore<Preferences>.resetAppSettings() {
@@ -68,5 +78,7 @@ suspend fun DataStore<Preferences>.resetAppSettings() {
         it[AppPrefs.IsFirstRun.key] = AppPrefs.IsFirstRun.defaultValue
         it[AppPrefs.AppTheme.key] = AppPrefs.AppTheme.defaultValue
         it[AppPrefs.UpdateRoutineAfterWorkout.key] = AppPrefs.UpdateRoutineAfterWorkout.defaultValue
+        it[AppPrefs.InsightsProgressMetric.key] = AppPrefs.InsightsProgressMetric.defaultValue
+        it[AppPrefs.InsightsSelectedExercise.key] = AppPrefs.InsightsSelectedExercise.defaultValue
     }
 }

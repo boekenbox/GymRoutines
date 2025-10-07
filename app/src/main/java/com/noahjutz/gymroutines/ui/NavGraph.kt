@@ -95,7 +95,7 @@ fun NavGraph(
         ) {
             composable(Screen.insights.name) {
                 WorkoutInsights(
-                    navToWorkoutEditor = { workoutId -> navController.navigate("${Screen.workoutViewer}/$workoutId") },
+                    navToWorkout = { workoutId -> navController.navigate("${Screen.workoutViewer}/$workoutId") },
                     navToSettings = { navController.navigate(Screen.settings.name) }
                 )
             }

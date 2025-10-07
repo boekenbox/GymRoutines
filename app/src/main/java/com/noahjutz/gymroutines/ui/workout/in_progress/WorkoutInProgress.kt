@@ -23,6 +23,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,16 +35,17 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DismissValue
@@ -52,6 +54,7 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.OutlinedButton
@@ -170,31 +173,35 @@ private fun WorkoutInProgressContent(
     )
 
     LazyColumn(
-        Modifier
+        modifier = Modifier
             .fillMaxHeight()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         item {
             Surface(
-                Modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp),
-                color = colors.onSurface.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(24.dp)
+                    .padding(top = 12.dp),
+                color = colors.primary.copy(alpha = 0.08f),
+                shape = MaterialTheme.shapes.large,
+                elevation = 0.dp
             ) {
                 val routineName by viewModel.routineName.collectAsState("")
                 Text(
                     text = routineName,
-                    modifier = Modifier.padding(24.dp),
-                    style = typography.h3,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                    style = typography.h5.copy(fontWeight = FontWeight.SemiBold),
                 )
             }
             Text(
                 workout.workout.duration.pretty(),
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp),
-                style = typography.h4.copy(textAlign = TextAlign.Center)
+                    .padding(top = 12.dp, bottom = 4.dp),
+                style = typography.subtitle1.copy(
+                    textAlign = TextAlign.Center,
+                    color = colors.onSurface.copy(alpha = 0.75f)
+                )
             )
         }
 
@@ -205,32 +212,38 @@ private fun WorkoutInProgressContent(
                 Modifier
                     .fillMaxWidth()
                     .animateItemPlacement()
-                    .padding(top = 24.dp),
-                shape = RoundedCornerShape(24.dp),
+                    .padding(top = 16.dp),
+                shape = MaterialTheme.shapes.large,
             ) {
                 Column {
-                    Surface(Modifier.fillMaxWidth(), color = colors.primary) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = colors.primary,
+                        shape = MaterialTheme.shapes.large
+                    ) {
                         Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 exercise?.name.toString(),
-                                style = typography.h5,
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .weight(1f)
+                                style = typography.h6.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colors.onPrimary
+                                ),
+                                modifier = Modifier.weight(1f)
                             )
 
                             Box {
                                 var expanded by remember { mutableStateOf(false) }
                                 IconButton(
-                                    modifier = Modifier.padding(16.dp),
                                     onClick = { expanded = !expanded }
                                 ) {
                                     Icon(
                                         Icons.Default.DragHandle,
-                                        stringResource(R.string.drag_handle)
+                                        stringResource(R.string.drag_handle),
+                                        tint = colors.onPrimary
                                     )
                                 }
                                 DropdownMenu(
@@ -271,21 +284,20 @@ private fun WorkoutInProgressContent(
                             }
                         }
                     }
-                    Column(Modifier.padding(vertical = 16.dp)) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
                         Row(Modifier.padding(horizontal = 4.dp)) {
-                            val headerTextStyle = TextStyle(
+                            val headerTextStyle = typography.subtitle2.copy(
                                 color = colors.onSurface,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
                             )
                             if (exercise?.logReps == true) Box(
                                 Modifier
                                     .padding(4.dp)
                                     .weight(1f)
-                                    .height(56.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.primary.copy(alpha = 0.1f)),
+                                    .height(48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(colors.primary.copy(alpha = 0.08f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -297,9 +309,9 @@ private fun WorkoutInProgressContent(
                                 Modifier
                                     .padding(4.dp)
                                     .weight(1f)
-                                    .height(56.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.primary.copy(alpha = 0.1f)),
+                                    .height(48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(colors.primary.copy(alpha = 0.08f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -311,9 +323,9 @@ private fun WorkoutInProgressContent(
                                 Modifier
                                     .padding(4.dp)
                                     .weight(1f)
-                                    .height(56.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.primary.copy(alpha = 0.1f)),
+                                    .height(48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(colors.primary.copy(alpha = 0.08f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -325,9 +337,9 @@ private fun WorkoutInProgressContent(
                                 Modifier
                                     .padding(4.dp)
                                     .weight(1f)
-                                    .height(56.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.primary.copy(alpha = 0.1f)),
+                                    .height(48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(colors.primary.copy(alpha = 0.08f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -338,14 +350,15 @@ private fun WorkoutInProgressContent(
                             Box(
                                 Modifier
                                     .padding(4.dp)
-                                    .size(56.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.primary.copy(alpha = 0.1f)),
+                                    .size(48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(colors.primary.copy(alpha = 0.08f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     Icons.Default.Check,
-                                    stringResource(R.string.column_set_complete)
+                                    stringResource(R.string.column_set_complete),
+                                    tint = colors.primary
                                 )
                             }
                         }
@@ -362,9 +375,9 @@ private fun WorkoutInProgressContent(
                                     state = dismissState,
                                     background = { SwipeToDeleteBackground(dismissState) },
                                 ) {
-                                    Surface {
+                                    Surface(color = colors.surface) {
                                         Row(
-                                            Modifier.padding(horizontal = 4.dp)
+                                            Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                         ) {
                                             val textFieldStyle = typography.body1.copy(
                                                 textAlign = TextAlign.Center,
@@ -373,13 +386,17 @@ private fun WorkoutInProgressContent(
                                             val decorationBox: @Composable (@Composable () -> Unit) -> Unit =
                                                 { innerTextField ->
                                                     Surface(
-                                                        color = colors.onSurface.copy(alpha = 0.1f),
-                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = colors.surface,
+                                                        shape = MaterialTheme.shapes.small,
+                                                        border = BorderStroke(
+                                                            1.dp,
+                                                            colors.onSurface.copy(alpha = 0.08f)
+                                                        )
                                                     ) {
                                                         Box(
                                                             Modifier
-                                                                .padding(horizontal = 4.dp)
-                                                                .height(56.dp),
+                                                                .heightIn(min = 48.dp)
+                                                                .padding(horizontal = 6.dp),
                                                             contentAlignment = Alignment.Center
                                                         ) {
                                                             innerTextField()
@@ -486,8 +503,8 @@ private fun WorkoutInProgressContent(
                                             Box(
                                                 Modifier
                                                     .padding(4.dp)
-                                                    .size(56.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .size(48.dp)
+                                                    .clip(MaterialTheme.shapes.small)
                                                     .toggleable(
                                                         value = set.complete,
                                                         onValueChange = {
@@ -497,7 +514,7 @@ private fun WorkoutInProgressContent(
                                                     .background(
                                                         animateColorAsState(
                                                             if (set.complete) colors.secondary else colors.onSurface.copy(
-                                                                alpha = 0.1f
+                                                                alpha = 0.06f
                                                             )
                                                         ).value
                                                     ),
@@ -524,11 +541,13 @@ private fun WorkoutInProgressContent(
                     TextButton(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp),
+                            .padding(horizontal = 12.dp)
+                            .height(52.dp),
+                        shape = MaterialTheme.shapes.medium,
                         onClick = { viewModel.addSet(setGroup) },
                     ) {
                         Icon(Icons.Default.Add, null)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(stringResource(R.string.btn_add_set))
                     }
                 }
@@ -538,36 +557,38 @@ private fun WorkoutInProgressContent(
         item {
             Button(
                 modifier = Modifier
-                    .padding(top = 24.dp)
+                    .padding(top = 16.dp)
                     .fillMaxWidth()
-                    .height(128.dp),
-                shape = RoundedCornerShape(24.dp),
+                    .height(72.dp),
+                shape = MaterialTheme.shapes.large,
+                elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
                 onClick = navToExercisePicker
             ) {
                 Icon(Icons.Default.Add, null)
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(10.dp))
                 Text(stringResource(R.string.btn_add_exercise))
             }
 
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.Center,
             ) {
                 OutlinedButton(
-                    modifier = Modifier.height(40.dp),
-                    shape = RoundedCornerShape(percent = 100),
+                    modifier = Modifier.height(44.dp),
+                    shape = MaterialTheme.shapes.medium,
                     onClick = { showCancelWorkoutDialog = true },
                 ) {
                     Text(stringResource(R.string.btn_discard_workout))
                 }
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(12.dp))
                 Button(
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp),
-                    shape = RoundedCornerShape(percent = 100),
+                        .height(48.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
                     onClick = { showFinishWorkoutDialog = true }
                 ) {
                     Text(stringResource(R.string.btn_finish_workout))

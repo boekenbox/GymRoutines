@@ -26,12 +26,14 @@ import androidx.compose.material.DismissDirection
 import androidx.compose.material.DismissState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 
 @ExperimentalMaterialApi
@@ -43,9 +45,11 @@ fun SwipeToDeleteBackground(dismissState: DismissState) {
         else -> return
     }
     Box(
-        modifier = Modifier.fillMaxSize()
-            .background(colors.secondary)
-            .padding(horizontal = 20.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(MaterialTheme.shapes.medium)
+            .background(colors.secondary.copy(alpha = 0.9f))
+            .padding(horizontal = 16.dp),
         contentAlignment = alignment
     ) {
         Icon(Icons.Default.Delete, null, tint = colors.onSecondary)

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -77,9 +78,17 @@ fun ExerciseList(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
+                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
                 onClick = { navToExerciseEditor(-1) },
                 icon = { Icon(Icons.Default.Add, null) },
                 text = { Text(stringResource(R.string.btn_new_exercise)) },
+                shape = MaterialTheme.shapes.large,
+                backgroundColor = MaterialTheme.colors.secondary,
+                contentColor = MaterialTheme.colors.onSecondary,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
             )
         },
     ) { paddingValues ->
@@ -109,12 +118,15 @@ private fun ExerciseListContent(
     viewModel: ExerciseListViewModel
 ) {
     val scope = rememberCoroutineScope()
-    LazyColumn(Modifier.fillMaxHeight()) {
+    LazyColumn(
+        modifier = Modifier.fillMaxHeight(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
         item {
             val searchQuery by viewModel.nameFilter.collectAsState()
             SearchBar(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
                     .fillMaxWidth(),
                 value = searchQuery,
                 onValueChange = viewModel::setNameFilter
@@ -132,17 +144,30 @@ private fun ExerciseListContent(
                 background = { SwipeToDeleteBackground(dismissState) }
             ) {
                 Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    shape = MaterialTheme.shapes.medium,
                     elevation = animateDpAsState(
-                        if (dismissState.dismissDirection != null) 4.dp else 0.dp
+                        if (dismissState.dismissDirection != null) 6.dp else 2.dp
                     ).value
                 ) {
                     ListItem(
-                        Modifier.clickable { navToExerciseEditor(exercise.exerciseId) },
+                        modifier = Modifier
+                            .clickable { navToExerciseEditor(exercise.exerciseId) }
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        icon = null,
+                        secondaryText = null,
+                        overlineText = null,
+                        singleLineSecondaryText = true,
                         text = {
                             Text(
                                 text = exercise.name,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.subtitle1.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             )
                         },
                         trailing = {
@@ -182,7 +207,7 @@ private fun ExerciseListContent(
         }
         item {
             // Fix FAB overlap
-            Spacer(Modifier.height(72.dp))
+            Spacer(Modifier.height(56.dp))
         }
     }
 }

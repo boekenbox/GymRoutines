@@ -54,6 +54,7 @@ import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.toStringOrBlank
 import org.koin.androidx.compose.getViewModel
 import org.koin.core.parameter.parametersOf
+import kotlinx.coroutines.launch
 
 @ExperimentalMaterialApi
 @ExperimentalAnimationApi
@@ -116,6 +117,31 @@ fun RoutineEditor(
             }
         }
     }
+}
+
+@Composable
+private fun ConfirmDeleteRoutineSetDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        title = {
+            Text(stringResource(R.string.dialog_title_delete, stringResource(R.string.dialog_item_set)))
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                content = { Text(stringResource(R.string.btn_delete)) }
+            )
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                content = { Text(stringResource(R.string.btn_cancel)) }
+            )
+        },
+        onDismissRequest = onDismiss,
+    )
 }
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
@@ -314,11 +340,7 @@ private fun RoutineEditorContent(
                         for (set in setGroup.sets) {
                             key(set.routineSetId) {
                                 val dismissState = rememberDismissState()
-                                LaunchedEffect(dismissState.currentValue) {
-                                    if (dismissState.currentValue != DismissValue.Default) {
-                                        viewModel.deleteSet(set)
-                                    }
-                                }
+                                val scope = rememberCoroutineScope()
                                 SwipeToDismiss(
                                     state = dismissState,
                                     background = { SwipeToDeleteBackground(dismissState) },
@@ -447,6 +469,15 @@ private fun RoutineEditorContent(
                                             }
                                         }
                                     }
+                                }
+                                if (dismissState.targetValue != DismissValue.Default) {
+                                    ConfirmDeleteRoutineSetDialog(
+                                        onDismiss = { scope.launch { dismissState.reset() } },
+                                        onConfirm = {
+                                            viewModel.deleteSet(set)
+                                            scope.launch { dismissState.reset() }
+                                        }
+                                    )
                                 }
                             }
                         }

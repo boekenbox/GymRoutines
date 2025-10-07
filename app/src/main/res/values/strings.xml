@@ -57,6 +57,7 @@
     <string name="label_exercise_notes">Notes</string>
     <string name="btn_more">More</string>
     <string name="btn_delete">Delete</string>
+    <string name="dialog_item_set">this set</string>
     <string name="btn_select_option">Select</string>
     <string name="sheet_workout_in_progress">Workout in progress</string>
     <string name="btn_expand">Expand</string>

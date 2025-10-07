@@ -72,23 +72,23 @@ fun WorkoutViewer(
 @ExperimentalTime
 @Composable
 fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewerViewModel) {
-    LazyColumn {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
         item {
             val routineName by viewModel.routineName.collectAsState(initial = "")
             Spacer(Modifier.height(24.dp))
             Text(
                 text = routineName.takeIf { it.isNotBlank() }
                     ?: stringResource(R.string.unnamed_routine),
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
                 style = typography.h4,
             )
             Text(
                 text = workout.workout.endTime.formatSimple(),
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
             )
             Text(
                 text = workout.workout.duration.pretty(),
-                modifier = Modifier.padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
 

@@ -153,8 +153,10 @@ private fun RoutineEditorContent(
     navToExercisePicker: () -> Unit
 ) {
     LazyColumn(
-        Modifier.fillMaxHeight(),
-        contentPadding = PaddingValues(bottom = 70.dp)
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(horizontal = 24.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 70.dp)
     ) {
 
         item {
@@ -164,9 +166,7 @@ private fun RoutineEditorContent(
             }
             val (nameLineCount, setNameLineCount) = remember { mutableStateOf(0) }
             BasicTextField(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp, start = 30.dp, end = 30.dp),
+                modifier = Modifier.fillMaxWidth(),
                 value = name,
                 onValueChange = setName,
                 onTextLayout = { setNameLineCount(it.lineCount) },

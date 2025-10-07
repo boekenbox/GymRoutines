@@ -22,10 +22,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.noahjutz.gymroutines.data.ExerciseRepository
 import com.noahjutz.gymroutines.data.domain.Exercise
-import java.util.*
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class ExerciseListViewModel(
@@ -38,12 +43,23 @@ class ExerciseListViewModel(
         _nameFilter.value = filter
     }
 
-    val exercises = repository.exercises.combine(_nameFilter) { exercises, nameFilter ->
-        exercises.filter {
-            it.name.lowercase(Locale.getDefault())
-                .contains(nameFilter.lowercase(Locale.getDefault()))
+    val exercises = repository.exercises
+        .combine(_nameFilter) { exercises, nameFilter ->
+            val locale = Locale.getDefault()
+            val normalizedFilter = nameFilter.trim().lowercase(locale)
+            val visibleExercises = exercises.filterNot(Exercise::hidden)
+
+            if (normalizedFilter.isEmpty()) {
+                visibleExercises
+            } else {
+                visibleExercises.filter { exercise ->
+                    exercise.name.lowercase(locale).contains(normalizedFilter)
+                }
+            }
         }
-    }
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun delete(exercise: Exercise) {
         viewModelScope.launch {

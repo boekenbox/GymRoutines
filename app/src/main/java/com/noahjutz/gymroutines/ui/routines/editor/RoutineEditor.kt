@@ -31,7 +31,6 @@ import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.contentColorFor
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +80,6 @@ fun RoutineEditor(
         floatingActionButton = {
             val isWorkoutRunning by viewModel.isWorkoutInProgress.collectAsState(initial = false)
             if (!isWorkoutRunning) {
-                val fabBackground = lerp(colors.surface, colors.primary, 0.45f)
                 ExtendedFloatingActionButton(
                     onClick = {
                         viewModel.startWorkout { id ->
@@ -90,8 +88,8 @@ fun RoutineEditor(
                     },
                     icon = { Icon(Icons.Default.PlayArrow, null) },
                     text = { Text(stringResource(R.string.btn_start_workout)) },
-                    backgroundColor = fabBackground,
-                    contentColor = contentColorFor(fabBackground)
+                    backgroundColor = colors.secondary,
+                    contentColor = colors.onSecondary
                 )
             }
         },

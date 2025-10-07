@@ -76,7 +76,7 @@ fun ExercisePickerSheet(
             onValueChange = viewModel::search
         )
         LazyColumn(Modifier.weight(1f)) {
-            items(allExercises.filter { !it.hidden }) { exercise ->
+            items(allExercises) { exercise ->
                 val checked by viewModel.exercisesContains(exercise)
                     .collectAsState(initial = false)
                 ListItem(

@@ -22,10 +22,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.noahjutz.gymroutines.data.RoutineRepository
 import com.noahjutz.gymroutines.data.domain.Routine
-import kotlinx.coroutines.flow.Flow
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class RoutineListViewModel(
@@ -34,12 +39,24 @@ class RoutineListViewModel(
     private val _nameFilter = MutableStateFlow("")
     val nameFilter = _nameFilter.asStateFlow()
 
-    val routines: Flow<List<Routine>> =
-        repository.routines.combine(nameFilter) { routines, filter ->
-            routines.filter { routine ->
-                filter.lowercase() in routine.name.lowercase() && !routine.hidden
+    val routines =
+        repository.routines
+            .combine(nameFilter) { routines, filter ->
+                val locale = Locale.getDefault()
+                val normalizedFilter = filter.trim().lowercase(locale)
+                val visibleRoutines = routines.filterNot(Routine::hidden)
+
+                if (normalizedFilter.isEmpty()) {
+                    visibleRoutines
+                } else {
+                    visibleRoutines.filter { routine ->
+                        routine.name.lowercase(locale).contains(normalizedFilter)
+                    }
+                }
             }
-        }
+            .flowOn(Dispatchers.Default)
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setNameFilter(name: String) {
         _nameFilter.value = name

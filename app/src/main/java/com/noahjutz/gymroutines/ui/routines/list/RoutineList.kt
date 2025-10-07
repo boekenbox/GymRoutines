@@ -18,7 +18,6 @@
 
 package com.noahjutz.gymroutines.ui.routines.list
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -98,17 +97,22 @@ fun RoutineList(
             )
         },
     ) { paddingValues ->
-        val routines by viewModel.routines.collectAsState(null)
+        val routines by viewModel.routines.collectAsState()
 
-        Crossfade(routines != null, Modifier.padding(paddingValues)) { isReady ->
-            if (isReady) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            val routineList = routines
+            if (routineList == null) {
+                RoutineListPlaceholder()
+            } else {
                 RoutineListContent(
-                    routines = routines ?: emptyList(),
+                    routines = routineList,
                     navToRoutineEditor = navToRoutineEditor,
                     viewModel = viewModel
                 )
-            } else {
-                RoutineListPlaceholder()
             }
         }
     }
@@ -124,12 +128,13 @@ fun RoutineListContent(
     viewModel: RoutineListViewModel
 ) {
     val scope = rememberCoroutineScope()
+    val nameFilter by viewModel.nameFilter.collectAsState()
+
     LazyColumn(
         modifier = Modifier.fillMaxHeight(),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
-            val nameFilter by viewModel.nameFilter.collectAsState()
             SearchBar(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,7 +144,11 @@ fun RoutineListContent(
             )
         }
 
-        items(items = routines, key = { it.routineId }) { routine ->
+        items(
+            items = routines,
+            key = { it.routineId },
+            contentType = { "routine" }
+        ) { routine ->
             val dismissState = rememberDismissState()
 
             SwipeToDismiss(

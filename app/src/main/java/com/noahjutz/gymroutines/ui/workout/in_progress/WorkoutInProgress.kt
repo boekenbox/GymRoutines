@@ -169,12 +169,16 @@ private fun WorkoutInProgressContent(
         }
     )
 
-    LazyColumn(Modifier.fillMaxHeight()) {
+    LazyColumn(
+        Modifier
+            .fillMaxHeight()
+            .padding(horizontal = 24.dp)
+    ) {
         item {
             Surface(
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp, start = 24.dp, end = 24.dp),
+                    .padding(top = 24.dp),
                 color = colors.onSurface.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(24.dp)
             ) {
@@ -189,7 +193,7 @@ private fun WorkoutInProgressContent(
                 workout.workout.duration.pretty(),
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 24.dp, start = 24.dp, end = 24.dp),
+                    .padding(top = 24.dp),
                 style = typography.h4.copy(textAlign = TextAlign.Center)
             )
         }
@@ -534,7 +538,7 @@ private fun WorkoutInProgressContent(
         item {
             Button(
                 modifier = Modifier
-                    .padding(top = 24.dp, start = 24.dp, end = 24.dp)
+                    .padding(top = 24.dp)
                     .fillMaxWidth()
                     .height(128.dp),
                 shape = RoundedCornerShape(24.dp),
@@ -548,7 +552,7 @@ private fun WorkoutInProgressContent(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(vertical = 24.dp),
                 horizontalArrangement = Arrangement.Center,
             ) {
                 OutlinedButton(

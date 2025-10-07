@@ -261,6 +261,7 @@ class WorkoutInsightsViewModel(
                 workoutsCount = data.second,
                 rollingAverage = rollingAverage
             )
+        }
         val trimmed = points.takeLast(12)
         val comparisonPercent = if (trimmed.size < 2) {
             null

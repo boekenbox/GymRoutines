@@ -1,203 +1,241 @@
-/*
- * Splitfit
- * Copyright (C) 2020  Noah Jutz
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.noahjutz.gymroutines.ui.workout.insights
 
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
+import androidx.compose.foundation.clickable
 import androidx.compose.material.Card
-import androidx.compose.material.DismissDirection
-import androidx.compose.material.DismissValue
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.ListItem
 import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
-import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.rememberDismissState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import com.google.accompanist.placeholder.material.placeholder
 import com.noahjutz.gymroutines.R
-import com.noahjutz.gymroutines.data.domain.Workout
-import com.noahjutz.gymroutines.data.domain.duration
 import com.noahjutz.gymroutines.ui.components.SimpleLineChart
-import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
-import com.noahjutz.gymroutines.ui.components.TopBar
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.getViewModel
-import kotlin.time.ExperimentalTime
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
-@ExperimentalFoundationApi
-@ExperimentalMaterialApi
-@ExperimentalTime
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun WorkoutInsights(
     viewModel: WorkoutInsightsViewModel = getViewModel(),
     navToSettings: () -> Unit,
-    navToWorkoutEditor: (Int) -> Unit,
+    navToWorkout: (Int) -> Unit,
+    navToPrHistory: () -> Unit = {},
+    navToWeeklyVolume: () -> Unit = {},
+    navToExerciseDetail: (Int) -> Unit = {},
+    navToConsistencyDetail: () -> Unit = {},
+    navToRoutineHistory: (String) -> Unit = {},
 ) {
+    val state by viewModel.uiState.collectAsState()
+
     Scaffold(
         topBar = {
-            TopBar(
-                title = stringResource(R.string.screen_insights),
+            TopAppBar(
+                title = { Text(text = stringResource(R.string.screen_insights)) },
                 actions = {
-                    Box {
-                        var expanded by remember { mutableStateOf(false) }
-                        IconButton(onClick = { expanded = !expanded }) {
-                            Icon(Icons.Default.MoreVert, stringResource(R.string.btn_more))
+                    IconButton(onClick = navToSettings) {
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.btn_more))
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 32.dp, top = padding.calculateTopPadding() + 16.dp)
+        ) {
+            item {
+                InsightCard(
+                    title = stringResource(R.string.chart_workout_duration),
+                    onClick = {},
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    if (state.durationChart == null) {
+                        EmptyStateText(text = stringResource(R.string.insights_duration_empty))
+                    } else {
+                        Box(Modifier.fillMaxWidth().height(180.dp)) {
+                            SimpleLineChart(
+                                modifier = Modifier.fillMaxWidth().height(180.dp),
+                                data = state.durationChart.aggregated,
+                                secondaryData = state.durationChart.raw
+                            )
                         }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            DropdownMenuItem(onClick = navToSettings) {
-                                Text(stringResource(R.string.screen_settings))
+                    }
+                }
+            }
+
+            state.lastSessionSummary?.let { summary ->
+                item {
+                    InsightCard(
+                        title = stringResource(R.string.insights_last_session_title),
+                        subtitle = summary.routineName,
+                        onClick = { navToWorkout(summary.workoutId) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        SessionSummaryContent(summary)
+                    }
+                }
+            }
+
+            item {
+                InsightCard(
+                    title = stringResource(R.string.insights_session_comparison_title),
+                    onClick = {
+                        state.sessionComparison?.latestWorkoutId?.let(navToWorkout)
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    val comparison = state.sessionComparison
+                    if (comparison == null) {
+                        EmptyStateText(text = stringResource(R.string.insights_session_comparison_empty))
+                    } else if (comparison.isFirstTime) {
+                        EmptyStateText(text = stringResource(R.string.insights_session_comparison_first))
+                    } else {
+                        SessionComparisonContent(comparison)
+                    }
+                }
+            }
+
+            item {
+                InsightCard(
+                    title = stringResource(R.string.insights_prs_title),
+                    action = {
+                        TextButton(onClick = navToPrHistory) {
+                            Text(text = stringResource(R.string.insights_prs_view_all))
+                        }
+                    },
+                    onClick = navToPrHistory,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    if (state.prs.isEmpty()) {
+                        EmptyStateText(text = stringResource(R.string.insights_prs_empty))
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            state.prs.take(3).forEach { pr ->
+                                PrRow(pr = pr, onClick = { navToWorkout(pr.workoutId) })
                             }
                         }
                     }
                 }
-            )
-        }
-    ) { paddingValues ->
-        val scope = rememberCoroutineScope()
-        val workouts by viewModel.workouts.collectAsState(initial = null)
-        val routineNames by viewModel.routineNames.collectAsState(initial = null)
+            }
 
-        LazyColumn(contentPadding = paddingValues) {
             item {
-                Box(Modifier.padding(16.dp)) {
-                    WorkoutCharts(workouts)
+                val weekly = state.weeklyVolume
+                val weeklySubtitle = when {
+                    weekly == null -> null
+                    weekly.comparisonPercent == null -> stringResource(R.string.insights_volume_need_more_data)
+                    weekly.comparisonPercent > 0 -> stringResource(
+                        R.string.insights_volume_increase,
+                        weekly.comparisonPercent
+                    )
+                    weekly.comparisonPercent < 0 -> stringResource(
+                        R.string.insights_volume_decrease,
+                        weekly.comparisonPercent.absoluteValue
+                    )
+                    else -> stringResource(R.string.insights_volume_no_change)
+                }
+                InsightCard(
+                    title = stringResource(R.string.insights_weekly_volume_title),
+                    subtitle = weeklySubtitle,
+                    onClick = navToWeeklyVolume,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    if (weekly == null || weekly.points.isEmpty()) {
+                        EmptyStateText(text = stringResource(R.string.insights_volume_empty))
+                    } else {
+                        WeeklyVolumeChart(points = weekly.points)
+                    }
                 }
             }
 
-            stickyHeader {
-                Surface(Modifier.fillMaxWidth()) {
-                    Text(
-                        stringResource(R.string.screen_workout_history),
-                        Modifier.padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
-                        style = typography.h4
+            item {
+                InsightCard(
+                    title = stringResource(R.string.insights_exercise_progress_title),
+                    action = {
+                        ProgressToggle(
+                            metric = state.exerciseProgress.metric,
+                            onMetricChange = viewModel::onProgressMetricChanged
+                        )
+                    },
+                    onClick = {
+                        state.exerciseProgress.selectedExerciseId?.let(navToExerciseDetail)
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    ExerciseProgressContent(
+                        progress = state.exerciseProgress,
+                        onExerciseSelected = viewModel::onExerciseSelected
                     )
                 }
             }
 
-            if (workouts != null && routineNames != null) {
-                items(workouts ?: emptyList(), { it.workoutId }) { workout ->
-                    val dismissState = rememberDismissState()
-                    val routineName = routineNames?.get(workout.workoutId)
-                        ?.takeIf { it.isNotBlank() }
-                        ?: stringResource(R.string.unnamed_routine)
-
-                    SwipeToDismiss(
-                        modifier = Modifier
-                            .zIndex(if (dismissState.offset.value == 0f) 0f else 1f),
-                        state = dismissState,
-                        background = { SwipeToDeleteBackground(dismissState) }
-                    ) {
-                        Card(
-                            onClick = { navToWorkoutEditor(workout.workoutId) },
-                            elevation = animateDpAsState(
-                                if (dismissState.dismissDirection != null) 4.dp else 0.dp
-                            ).value,
-                        ) {
-                            ListItem(
-                                text = {
-                                    Text(
-                                        text = routineName,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                },
-                                trailing = {
-                                    var expanded by remember { mutableStateOf(false) }
-
-                                    Box {
-                                        IconButton(onClick = { expanded = !expanded }) {
-                                            Icon(Icons.Default.MoreVert, null)
-                                        }
-
-                                        DropdownMenu(
-                                            expanded = expanded,
-                                            onDismissRequest = { expanded = false }
-                                        ) {
-                                            DropdownMenuItem(
-                                                onClick = {
-                                                    expanded = false
-                                                    scope.launch {
-                                                        dismissState.dismiss(DismissDirection.StartToEnd)
-                                                    }
-                                                }
-                                            ) {
-                                                Text(stringResource(R.string.btn_delete))
-                                            }
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    }
-
-                    if (dismissState.targetValue != DismissValue.Default) {
-                        DeleteConfirmation(
-                            name = routineName,
-                            onConfirm = { viewModel.delete(workout) },
-                            onDismiss = { scope.launch { dismissState.reset() } }
-                        )
+            item {
+                InsightCard(
+                    title = stringResource(R.string.insights_consistency_title),
+                    onClick = navToConsistencyDetail,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    val consistency = state.consistency
+                    if (consistency == null) {
+                        EmptyStateText(text = stringResource(R.string.insights_consistency_empty))
+                    } else {
+                        ConsistencyContent(consistency)
                     }
                 }
-            } else {
-                items(5) {
-                    ListItem {
-                        Text(
-                            "A".repeat((5..15).random()),
-                            Modifier.placeholder(visible = true)
-                        )
+            }
+
+            item {
+                InsightCard(
+                    title = stringResource(R.string.insights_routine_utilization_title),
+                    onClick = {
+                        state.routineUtilization?.routines?.firstOrNull()?.routineName?.let(navToRoutineHistory)
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    val utilization = state.routineUtilization
+                    if (utilization == null || utilization.routines.isEmpty()) {
+                        EmptyStateText(text = stringResource(R.string.insights_routines_empty))
+                    } else {
+                        RoutineUtilizationContent(utilization, navToRoutineHistory)
                     }
                 }
             }
@@ -206,77 +244,327 @@ fun WorkoutInsights(
 }
 
 @Composable
-private fun DeleteConfirmation(
-    name: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        title = {
+private fun SessionSummaryContent(summary: SessionSummaryUi) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(
-                stringResource(
-                    R.string.dialog_title_delete,
-                    name
+                text = summary.date.format(DateTimeFormatter.ofPattern("MMM d")),
+                style = typography.subtitle1,
+                color = colors.onSurface.copy(alpha = 0.7f)
+            )
+            if (summary.prCount > 0) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = colors.primary.copy(alpha = 0.1f)
+                ) {
+                    Text(
+                        text = stringResource(R.string.insights_prs_count, summary.prCount),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        style = typography.caption.copy(color = colors.primary)
+                    )
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            SummaryMetric(label = stringResource(R.string.insights_metric_volume), value = formatWeight(summary.totalVolume))
+            SummaryMetric(label = stringResource(R.string.insights_metric_total_reps), value = summary.totalReps.toString())
+            SummaryMetric(label = stringResource(R.string.insights_metric_avg_load), value = formatWeight(summary.avgLoadPerRep))
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, style = typography.h6, fontWeight = FontWeight.Bold)
+        Text(text = label, style = typography.caption, color = colors.onSurface.copy(alpha = 0.6f))
+    }
+}
+
+@Composable
+private fun SessionComparisonContent(comparison: SessionComparisonUi) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        comparison.comparisonDate?.let { date ->
+            Text(
+                text = stringResource(
+                    R.string.insights_session_comparison_against,
+                    date.format(DateTimeFormatter.ofPattern("MMM d"))
+                ),
+                style = typography.caption,
+                color = colors.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        Text(
+            text = stringResource(
+                R.string.insights_session_comparison_volume_delta,
+                formatWeight(comparison.sessionVolumeDelta)
+            ),
+            style = typography.subtitle2,
+            fontWeight = FontWeight.SemiBold
+        )
+        comparison.rows.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(text = row.exerciseName, maxLines = 1, overflow = TextOverflow.Ellipsis, style = typography.subtitle1)
+                }
+                DeltaValue(value = row.loadDelta, suffix = stringResource(R.string.insights_unit_weight))
+                Spacer(modifier = Modifier.size(12.dp))
+                DeltaValue(value = row.repsDelta.toDouble(), suffix = stringResource(R.string.insights_unit_reps), showDecimals = false)
+                Spacer(modifier = Modifier.size(12.dp))
+                DeltaValue(value = row.volumeDelta, suffix = stringResource(R.string.insights_unit_weight))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeltaValue(value: Double, suffix: String, showDecimals: Boolean = true) {
+    val positive = value > 0
+    val icon = if (positive) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown
+    val formatted = if (showDecimals) String.format(Locale.getDefault(), "%+.1f %s", value, suffix) else String.format(Locale.getDefault(), "%+d %s", value.roundToInt(), suffix)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(imageVector = icon, contentDescription = null, tint = if (positive) colors.primary else colors.error)
+        Text(text = formatted, style = typography.body2)
+    }
+}
+
+@Composable
+private fun PrRow(pr: PrEventUi, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(text = pr.exerciseName, style = typography.subtitle1, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = pr.type.displayName(), style = typography.caption, color = colors.onSurface.copy(alpha = 0.6f))
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(text = pr.displayValue(), style = typography.body1, fontWeight = FontWeight.Bold)
+            Text(text = DateTimeFormatter.ofPattern("MMM d").format(LocalDate.ofInstant(pr.occurredAt, java.time.ZoneId.systemDefault())), style = typography.caption)
+        }
+        IconButton(onClick = onClick) {
+            Icon(Icons.Default.ChevronRight, contentDescription = null)
+        }
+    }
+}
+
+private fun PrType.displayName(): String = when (this) {
+    PrType.Load -> "Load"
+    PrType.RepsAtLoad -> "Reps @ Load"
+    PrType.EstimatedOneRm -> "Est 1RM"
+}
+
+private fun PrEventUi.displayValue(): String {
+    return when (type) {
+        PrType.Load -> formatWeight(value)
+        PrType.RepsAtLoad -> String.format(Locale.getDefault(), "%d @ %s", value.roundToInt(), formatWeight(load ?: 0.0))
+        PrType.EstimatedOneRm -> String.format(Locale.getDefault(), "%.1f", value)
+    }
+}
+
+@Composable
+private fun WeeklyVolumeChart(points: List<WeeklyVolumePoint>) {
+    val maxVolume = points.maxOfOrNull { it.totalVolume } ?: 1.0
+    Column(horizontalAlignment = Alignment.Start) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+        ) {
+            val maxHeight = size.height
+            val step = if (points.size <= 1) size.width else size.width / (points.size - 1)
+            val barWidthPx = step * 0.5f
+
+            points.forEachIndexed { index, point ->
+                val normalized = if (maxVolume == 0.0) 0.0 else point.totalVolume / maxVolume
+                val barHeight = (normalized * maxHeight).toFloat()
+                val x = index * step - barWidthPx / 2f
+                drawRect(
+                    color = colors.primary,
+                    topLeft = androidx.compose.ui.geometry.Offset(x.coerceAtLeast(0f), maxHeight - barHeight),
+                    size = androidx.compose.ui.geometry.Size(barWidthPx, barHeight)
                 )
+            }
+
+            if (points.any { it.rollingAverage != null }) {
+                val path = Path()
+                points.forEachIndexed { index, point ->
+                    val average = point.rollingAverage ?: return@forEachIndexed
+                    val normalized = if (maxVolume == 0.0) 0.0 else average / maxVolume
+                    val x = index * step
+                    val y = maxHeight - (normalized * maxHeight).toFloat()
+                    if (path.isEmpty) {
+                        path.moveTo(x, y)
+                    } else {
+                        path.lineTo(x, y)
+                    }
+                }
+                drawPath(
+                    path = path,
+                    color = colors.onSurface.copy(alpha = 0.5f),
+                    style = Stroke(width = 2.dp.toPx())
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            points.forEach { point ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = point.weekKey.substringAfter('-'), style = typography.caption)
+                    Text(text = point.workoutsCount.toString(), style = typography.caption, color = colors.onSurface.copy(alpha = 0.6f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressToggle(metric: ExerciseProgressMetric, onMetricChange: (ExerciseProgressMetric) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        SelectableChip(
+            selected = metric == ExerciseProgressMetric.Load,
+            label = stringResource(R.string.insights_progress_load),
+            onClick = { onMetricChange(ExerciseProgressMetric.Load) }
+        )
+        SelectableChip(
+            selected = metric == ExerciseProgressMetric.EstimatedOneRm,
+            label = stringResource(R.string.insights_progress_est_1rm),
+            onClick = { onMetricChange(ExerciseProgressMetric.EstimatedOneRm) }
+        )
+    }
+}
+
+@Composable
+private fun ExerciseProgressContent(
+    progress: ExerciseProgressUi,
+    onExerciseSelected: (Int) -> Unit,
+) {
+    if (progress.exercises.isEmpty()) {
+        EmptyStateText(text = stringResource(R.string.insights_exercise_progress_empty))
+        return
+    }
+
+    val scrollState = rememberScrollState()
+    Row(
+        modifier = Modifier
+            .horizontalScroll(scrollState)
+            .padding(bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        progress.exercises.forEach { series ->
+            SelectableChip(
+                label = series.exerciseName,
+                selected = progress.selectedExerciseId == series.exerciseId,
+                onClick = { onExerciseSelected(series.exerciseId) }
             )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                content = { Text(stringResource(R.string.btn_delete)) }
-            )
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                content = { Text(stringResource(R.string.btn_cancel)) }
-            )
-        },
-        onDismissRequest = onDismiss
+        }
+    }
+
+    val selected = progress.exercises.firstOrNull { it.exerciseId == progress.selectedExerciseId }
+        ?: progress.exercises.first()
+
+    val data = if (progress.metric == ExerciseProgressMetric.Load) selected.secondarySamples else selected.samples
+    if (data.isEmpty()) {
+        EmptyStateText(text = stringResource(R.string.insights_exercise_progress_empty))
+    } else {
+        Sparkline(data.takeLast(12))
+    }
+}
+
+@Composable
+private fun SelectableChip(selected: Boolean, label: String, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = if (selected) colors.primary.copy(alpha = 0.12f) else colors.onSurface.copy(alpha = 0.05f),
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = typography.body2,
+            color = if (selected) colors.primary else colors.onSurface
+        )
+    }
+}
+
+@Composable
+private fun Sparkline(points: List<Pair<LocalDate, Double>>) {
+    if (points.isEmpty()) {
+        EmptyStateText(text = stringResource(R.string.insights_exercise_progress_empty))
+        return
+    }
+    val chartData = points.mapIndexed { index, pair -> index.toFloat() to pair.second.toFloat() }
+    SimpleLineChart(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(140.dp),
+        data = chartData
     )
 }
 
-@ExperimentalTime
 @Composable
-private fun WorkoutCharts(
-    workouts: List<Workout>?,
-) {
-    ChartCard(title = stringResource(R.string.chart_workout_duration)) {
-        when {
-            workouts == null -> {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .placeholder(visible = true)
-                )
-            }
-            workouts.size < 3 -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun ConsistencyContent(consistency: ConsistencyUi) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.insights_consistency_workouts, consistency.workoutsPerWeekAverage),
+            style = typography.body1
+        )
+        val days = consistency.daysSinceLastWorkout?.let { it.toString() } ?: "--"
+        Text(
+            text = stringResource(R.string.insights_consistency_days_since, days),
+            style = typography.body1
+        )
+        Text(
+            text = stringResource(R.string.insights_consistency_streak, consistency.currentStreak),
+            style = typography.body1
+        )
+    }
+}
+
+@Composable
+private fun RoutineUtilizationContent(utilization: RoutineUtilizationUi, onRoutineClick: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        utilization.routines.forEach { routine ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(text = routine.routineName, style = typography.subtitle1, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        stringResource(R.string.chart_insufficient_data),
+                        text = stringResource(
+                            R.string.insights_routines_average,
+                            routine.usageCount,
+                            routine.averageDaysBetween?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "--"
+                        ),
+                        style = typography.caption,
                         color = colors.onSurface.copy(alpha = 0.6f)
                     )
                 }
+                IconButton(onClick = { onRoutineClick(routine.routineName) }) {
+                    Icon(Icons.Default.ChevronRight, contentDescription = null)
+                }
             }
-            else -> {
-                SimpleLineChart(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    data = workouts
-                        .reversed()
-                        .mapIndexed { i, workout ->
-                            Pair(i.toFloat(), workout.duration.inWholeSeconds.toFloat())
-                        }
-                        .chunked(3) {
-                            val avg = it.map { it.second }.average()
-                            Pair(it.first().first, avg.toFloat())
-                        },
-                    secondaryData = workouts
-                        .reversed()
-                        .mapIndexed { i, workout ->
-                            Pair(i.toFloat(), workout.duration.inWholeSeconds.toFloat())
-                        }
+        }
+        if (utilization.exerciseUsage.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.insights_routines_top_exercises),
+                style = typography.subtitle2,
+                color = colors.onSurface.copy(alpha = 0.7f)
+            )
+            utilization.exerciseUsage.take(3).forEach { (name, count) ->
+                Text(
+                    text = stringResource(R.string.insights_routines_exercise_row, name, count),
+                    style = typography.caption
                 )
             }
         }
@@ -284,29 +572,43 @@ private fun WorkoutCharts(
 }
 
 @Composable
-private fun ChartCard(
+private fun EmptyStateText(text: String) {
+    Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+        Text(text = text, style = typography.body2, color = colors.onSurface.copy(alpha = 0.6f))
+    }
+}
+
+@Composable
+private fun InsightCard(
     title: String,
-    chart: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    action: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
-        Modifier
-            .fillMaxWidth()
-            .height(200.dp),
-        shape = RoundedCornerShape(30.dp),
-        elevation = 2.dp,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = 4.dp,
+        onClick = onClick
     ) {
-        Column(Modifier.fillMaxWidth()) {
-            Surface(
-                Modifier.fillMaxWidth(),
-                color = colors.primary
-            ) {
-                Text(
-                    title,
-                    Modifier.padding(20.dp),
-                    style = typography.h6
-                )
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(text = title, style = typography.h6)
+                    subtitle?.let {
+                        Text(text = it, style = typography.caption, color = colors.onSurface.copy(alpha = 0.6f))
+                    }
+                }
+                action?.invoke()
             }
-            chart()
+            content()
         }
     }
 }
+
+private fun formatWeight(value: Double): String {
+    return String.format(Locale.getDefault(), "%.1f", value)
+}
+

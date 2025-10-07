@@ -46,7 +46,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DismissValue
@@ -86,7 +85,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -191,8 +189,7 @@ private fun WorkoutInProgressContent(
         onDismiss = { showCancelWorkoutDialog = false },
         cancelWorkout = {
             viewModel.cancelWorkout(popBackStack)
-        },
-        confirmButtonBackground = colors.error,
+        }
     )
 
     val coroutineScope = rememberCoroutineScope()
@@ -224,8 +221,7 @@ private fun WorkoutInProgressContent(
                 }
                 setPendingDeletion = null
                 pendingSetGroup = null
-            },
-            confirmButtonBackground = colors.error,
+            }
         )
     }
 
@@ -653,21 +649,13 @@ private fun WorkoutInProgressContent(
 private fun ConfirmDeleteSetDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-    confirmButtonBackground: Color? = null,
 ) {
-    val confirmButtonColors = confirmButtonBackground?.let { background ->
-        ButtonDefaults.buttonColors(containerColor = background)
-    } ?: ButtonDefaults.buttonColors()
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_title_delete_set)) },
         text = { Text(stringResource(R.string.dialog_body_delete_set)) },
         confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = confirmButtonColors,
-            ) {
+            Button(onClick = onConfirm) {
                 Text(stringResource(R.string.dialog_confirm_delete_set))
             }
         },
@@ -684,23 +672,11 @@ private fun ConfirmDeleteSetDialog(
 private fun CancelWorkoutDialog(
     onDismiss: () -> Unit,
     cancelWorkout: () -> Unit,
-    confirmButtonBackground: Color? = null,
 ) {
-    val confirmButtonColors = confirmButtonBackground?.let { background ->
-        ButtonDefaults.buttonColors(containerColor = background)
-    } ?: ButtonDefaults.buttonColors()
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_title_discard_workout)) },
-        confirmButton = {
-            Button(
-                onClick = cancelWorkout,
-                colors = confirmButtonColors,
-            ) {
-                Text(stringResource(R.string.btn_delete))
-            }
-        },
+        confirmButton = { Button(onClick = cancelWorkout) { Text(stringResource(R.string.btn_delete)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) } },
     )
 }

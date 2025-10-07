@@ -31,10 +31,12 @@ import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.contentColorFor
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +81,7 @@ fun RoutineEditor(
         floatingActionButton = {
             val isWorkoutRunning by viewModel.isWorkoutInProgress.collectAsState(initial = false)
             if (!isWorkoutRunning) {
+                val fabBackground = lerp(colors.surface, colors.primary, 0.45f)
                 ExtendedFloatingActionButton(
                     onClick = {
                         viewModel.startWorkout { id ->
@@ -87,6 +90,8 @@ fun RoutineEditor(
                     },
                     icon = { Icon(Icons.Default.PlayArrow, null) },
                     text = { Text(stringResource(R.string.btn_start_workout)) },
+                    backgroundColor = fabBackground,
+                    contentColor = contentColorFor(fabBackground)
                 )
             }
         },
@@ -155,8 +160,8 @@ private fun RoutineEditorContent(
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
-            .padding(horizontal = 24.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 70.dp)
+            .padding(horizontal = 20.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 64.dp)
     ) {
 
         item {
@@ -174,17 +179,17 @@ private fun RoutineEditorContent(
                 cursorBrush = SolidColor(colors.onSurface),
                 decorationBox = { innerTextField ->
                     Surface(
-                        modifier = if (nameLineCount <= 1) Modifier.height(60.dp) else Modifier,
-                        color = colors.onSurface.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(30.dp)
+                        modifier = if (nameLineCount <= 1) Modifier.height(48.dp) else Modifier,
+                        color = colors.onSurface.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(24.dp)
                     ) {
                         Row(
-                            Modifier.padding(start = 30.dp, end = 8.dp),
+                            Modifier.padding(start = 20.dp, end = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Box(
                                 Modifier
-                                    .padding(vertical = 16.dp)
+                                    .padding(vertical = 10.dp)
                                     .weight(1f)
                             ) {
                                 if (routine.name.isEmpty()) {
@@ -202,7 +207,7 @@ private fun RoutineEditorContent(
                                 enter = fadeIn(),
                                 exit = fadeOut()
                             ) {
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(4.dp))
                                 IconButton(onClick = { setName("") }) {
                                     Icon(
                                         Icons.Default.Clear,
@@ -218,31 +223,32 @@ private fun RoutineEditorContent(
 
         items(setGroups.sortedBy { it.group.position }, key = { it.group.id }) { setGroup ->
             val exercise = viewModel.getExercise(setGroup.group.exerciseId)!!
+            val headerColor = lerp(colors.surface, colors.primary, 0.32f)
             Card(
                 Modifier
                     .fillMaxWidth()
                     .animateItemPlacement()
-                    .padding(top = 30.dp),
-                shape = RoundedCornerShape(30.dp),
+                    .padding(top = 20.dp),
+                shape = RoundedCornerShape(22.dp),
             ) {
                 Column {
-                    Surface(Modifier.fillMaxWidth(), color = colors.primary) {
+                    Surface(Modifier.fillMaxWidth(), color = headerColor) {
                         Row(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 exercise.name,
-                                style = typography.h5,
+                                style = typography.h6,
                                 modifier = Modifier
-                                    .padding(16.dp)
+                                    .padding(horizontal = 16.dp, vertical = 10.dp)
                                     .weight(1f)
                             )
 
                             Box {
                                 var expanded by remember { mutableStateOf(false) }
                                 IconButton(
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier.padding(end = 6.dp),
                                     onClick = { expanded = !expanded }
                                 ) {
                                     Icon(
@@ -288,17 +294,17 @@ private fun RoutineEditorContent(
                             }
                         }
                     }
-                    Column(Modifier.padding(vertical = 16.dp)) {
-                        Row(Modifier.padding(horizontal = 4.dp)) {
+                    Column(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
+                        Row(Modifier.padding(horizontal = 2.dp)) {
                             val headerTextStyle = TextStyle(
                                 color = colors.onSurface,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
                                 textAlign = TextAlign.Center
                             )
                             if (exercise.logReps) Surface(
                                 Modifier
-                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
                                     .weight(1f),
                             ) {
                                 Text(
@@ -308,7 +314,7 @@ private fun RoutineEditorContent(
                             }
                             if (exercise.logWeight) Surface(
                                 Modifier
-                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
                                     .weight(1f),
                             ) {
                                 Text(
@@ -318,7 +324,7 @@ private fun RoutineEditorContent(
                             }
                             if (exercise.logTime) Surface(
                                 Modifier
-                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
                                     .weight(1f),
                             ) {
                                 Text(
@@ -328,7 +334,7 @@ private fun RoutineEditorContent(
                             }
                             if (exercise.logDistance) Surface(
                                 Modifier
-                                    .padding(horizontal = 4.dp, vertical = 8.dp)
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
                                     .weight(1f),
                             ) {
                                 Text(
@@ -347,7 +353,7 @@ private fun RoutineEditorContent(
                                 ) {
                                     Surface {
                                         Row(
-                                            Modifier.padding(horizontal = 4.dp)
+                                            Modifier.padding(horizontal = 2.dp)
                                         ) {
                                             val textFieldStyle = typography.body1.copy(
                                                 textAlign = TextAlign.Center,
@@ -356,13 +362,13 @@ private fun RoutineEditorContent(
                                             val decorationBox: @Composable (@Composable () -> Unit) -> Unit =
                                                 { innerTextField ->
                                                     Surface(
-                                                        color = colors.onSurface.copy(alpha = 0.1f),
-                                                        shape = RoundedCornerShape(8.dp),
+                                                        color = colors.onSurface.copy(alpha = 0.08f),
+                                                        shape = RoundedCornerShape(10.dp),
                                                     ) {
                                                         Box(
                                                             Modifier.padding(
-                                                                vertical = 16.dp,
-                                                                horizontal = 4.dp
+                                                                vertical = 10.dp,
+                                                                horizontal = 6.dp
                                                             ),
                                                             contentAlignment = Alignment.Center
                                                         ) {
@@ -379,7 +385,7 @@ private fun RoutineEditorContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = reps,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.integer))
@@ -405,7 +411,7 @@ private fun RoutineEditorContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = weight,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.float))
@@ -427,7 +433,7 @@ private fun RoutineEditorContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = time,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.duration))
@@ -454,7 +460,7 @@ private fun RoutineEditorContent(
                                                 AutoSelectTextField(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .padding(4.dp),
+                                                        .padding(3.dp),
                                                     value = distance,
                                                     onValueChange = {
                                                         if (it.matches(RegexPatterns.float))
@@ -485,11 +491,11 @@ private fun RoutineEditorContent(
                     TextButton(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp),
+                            .height(48.dp),
                         onClick = { viewModel.addSet(setGroup) },
                     ) {
                         Icon(Icons.Default.Add, null)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(stringResource(R.string.btn_add_set))
                     }
                 }
@@ -500,13 +506,13 @@ private fun RoutineEditorContent(
             Button(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(30.dp)
-                    .height(120.dp),
-                shape = RoundedCornerShape(30.dp),
+                    .padding(24.dp)
+                    .height(72.dp),
+                shape = RoundedCornerShape(24.dp),
                 onClick = navToExercisePicker
             ) {
                 Icon(Icons.Default.Add, null)
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.btn_add_exercise))
             }
         }

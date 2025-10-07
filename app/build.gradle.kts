@@ -29,7 +29,7 @@ android {
     buildToolsVersion = "34.0.0"
 
     defaultConfig {
-        applicationId = "com.noahjutz.gymroutines"
+        applicationId = "com.boekenbox.gymroutines"
         minSdk = 21
         targetSdk = 33
         versionCode = 47
@@ -52,6 +52,10 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
+        }
+        debug {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
         }
     }
 
@@ -82,7 +86,7 @@ android {
             )
         )
     }
-    namespace = "com.noahjutz.gymroutines"
+    namespace = "com.boekenbox.gymroutines"
 }
 
 dependencies {

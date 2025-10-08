@@ -158,8 +158,23 @@ class WorkoutInProgressViewModel(
 
     fun updateWarmup(set: WorkoutSet, isWarmup: Boolean) {
         viewModelScope.launch {
+            if (isWarmup && !canBeWarmup(set)) return@launch
+
             workoutRepository.update(set.copy(isWarmup = isWarmup))
         }
+    }
+
+    private fun canBeWarmup(set: WorkoutSet): Boolean {
+        val setsInGroup = _workout?.setGroups
+            ?.firstOrNull { it.group.id == set.groupId }
+            ?.sets
+            ?.sortedBy { it.workoutSetId }
+            ?: return true
+
+        val targetIndex = setsInGroup.indexOfFirst { it.workoutSetId == set.workoutSetId }
+        if (targetIndex < 0) return true
+
+        return setsInGroup.take(targetIndex).all { it.isWarmup }
     }
 
     fun updateExerciseNotes(exerciseId: Int, notes: String) {

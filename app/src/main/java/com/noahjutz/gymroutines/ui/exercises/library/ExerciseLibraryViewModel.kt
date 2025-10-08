@@ -53,6 +53,10 @@ class ExerciseLibraryViewModel(
 ) : ViewModel() {
     private val locale = Locale.getDefault()
 
+    init {
+        libraryRepository.ensureLoaded()
+    }
+
     private val _query = MutableStateFlow("")
     private val _selectedBodyPart = MutableStateFlow<String?>(null)
     private val _selectedEquipment = MutableStateFlow<String?>(null)

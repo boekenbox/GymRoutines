@@ -47,6 +47,10 @@ class ExerciseListViewModel(
     private val _nameFilter = MutableStateFlow("")
     val nameFilter = _nameFilter.asStateFlow()
 
+    init {
+        libraryRepository.ensureLoaded()
+    }
+
     fun setNameFilter(filter: String) {
         _nameFilter.value = filter
     }

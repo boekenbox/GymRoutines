@@ -1,9 +1,7 @@
 package com.noahjutz.gymroutines.data.library
 
 import android.content.Context
-import android.util.Log
 import java.util.Locale
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,36 +41,14 @@ class ExerciseLibraryRepository(
 
     suspend fun loadLibrary() {
         withContext(dispatcher) {
-            try {
-                val assets = context.assets
-                val exercisesJson =
-                    assets.open(EXERCISES_PATH).bufferedReader().use { it.readText() }
-                val exercises =
-                    json.decodeFromString(
-                        ListSerializer(LibraryExercise.serializer()),
-                        exercisesJson
-                    )
-                val sortedExercises =
-                    exercises.sortedBy { it.name.lowercase(Locale.getDefault()) }
-                _exercises.value = sortedExercises
+            val assets = context.assets
+            val exercisesJson = assets.open(EXERCISES_PATH).bufferedReader().use { it.readText() }
+            val exercises = json.decodeFromString(ListSerializer(LibraryExercise.serializer()), exercisesJson)
+            _exercises.value = exercises.sortedBy { it.name.lowercase(Locale.getDefault()) }
 
-                _bodyParts.value =
-                    loadNamedValues(BODYPARTS_PATH, sortedExercises.flatMap { it.bodyParts })
-                _equipments.value =
-                    loadNamedValues(EQUIPMENTS_PATH, sortedExercises.flatMap { it.equipments })
-                _targetMuscles.value = loadNamedValues(
-                    MUSCLES_PATH,
-                    sortedExercises.flatMap { it.targetMuscles + it.secondaryMuscles }
-                )
-            } catch (cancellationException: CancellationException) {
-                throw cancellationException
-            } catch (exception: Exception) {
-                Log.e(TAG, "Failed to load exercise library assets", exception)
-                _exercises.value = emptyList()
-                _bodyParts.value = emptyList()
-                _equipments.value = emptyList()
-                _targetMuscles.value = emptyList()
-            }
+            _bodyParts.value = loadNamedValues(BODYPARTS_PATH, exercises.flatMap { it.bodyParts })
+            _equipments.value = loadNamedValues(EQUIPMENTS_PATH, exercises.flatMap { it.equipments })
+            _targetMuscles.value = loadNamedValues(MUSCLES_PATH, exercises.flatMap { it.targetMuscles + it.secondaryMuscles })
         }
     }
 
@@ -93,7 +69,6 @@ class ExerciseLibraryRepository(
     }
 
     companion object {
-        private const val TAG = "ExerciseLibraryRepo"
         private const val LIBRARY_DIR = "exercise_library"
         private const val EXERCISES_PATH = "$LIBRARY_DIR/exercises.json"
         private const val BODYPARTS_PATH = "$LIBRARY_DIR/bodyparts.json"

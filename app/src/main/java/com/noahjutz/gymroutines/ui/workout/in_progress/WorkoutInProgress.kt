@@ -489,6 +489,7 @@ private fun WorkoutInProgressContent(
                                 )
                             }
                         }
+                        var workingSetIndex = 0
                         setGroup.sets.forEachIndexed { index, set ->
                             key(set.workoutSetId) {
                                 val dismissState = rememberDismissState()
@@ -508,11 +509,16 @@ private fun WorkoutInProgressContent(
                                         ) {
                                             SetTypeBadge(
                                                 isWarmup = set.isWarmup,
-                                                index = index,
+                                                index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
                                                 modifier = Modifier
                                                     .padding(3.dp)
                                                     .width(WarmupIndicatorWidth),
-                                                onToggle = { pendingSetTypeChange = set to !set.isWarmup }
+                                                onToggle = {
+                                                    val makeWarmup = !set.isWarmup
+                                                    if (!makeWarmup || setGroup.sets.take(index).all { it.isWarmup }) {
+                                                        pendingSetTypeChange = set to makeWarmup
+                                                    }
+                                                }
                                             )
                                             val textFieldStyle = typography.body1.copy(
                                                 textAlign = TextAlign.Center,

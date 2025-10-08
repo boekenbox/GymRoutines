@@ -170,8 +170,21 @@ class RoutineEditorViewModel(
 
     fun updateWarmup(set: RoutineSet, isWarmup: Boolean) {
         viewModelScope.launch {
+            if (isWarmup && !canBeWarmup(set)) return@launch
+
             routineRepository.update(set.copy(isWarmup = isWarmup))
         }
+    }
+
+    private fun canBeWarmup(set: RoutineSet): Boolean {
+        val setsInGroup = _sets
+            .filter { it.groupId == set.groupId }
+            .sortedBy { it.routineSetId }
+
+        val targetIndex = setsInGroup.indexOfFirst { it.routineSetId == set.routineSetId }
+        if (targetIndex < 0) return true
+
+        return setsInGroup.take(targetIndex).all { it.isWarmup }
     }
 
     fun startWorkout(onWorkoutStarted: (Long) -> Unit) {

@@ -209,7 +209,8 @@ fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewer
                                 Icon(Icons.Default.Check, null)
                             }
                         }
-                        setGroup.sets.forEachIndexed { index, set ->
+                        var workingSetIndex = 0
+                        setGroup.sets.forEach { set ->
                             Row(
                                 Modifier.padding(horizontal = 4.dp)
                             ) {
@@ -244,7 +245,7 @@ fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewer
                                     }
                                 SetTypeBadge(
                                     isWarmup = set.isWarmup,
-                                    index = index,
+                                    index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
                                     modifier = Modifier
                                         .padding(4.dp)
                                         .width(WarmupIndicatorWidth)

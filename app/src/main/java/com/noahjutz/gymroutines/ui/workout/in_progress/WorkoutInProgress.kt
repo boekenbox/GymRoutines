@@ -78,22 +78,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.lerp
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.WorkoutSet
-import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
-import com.noahjutz.gymroutines.ui.components.RestTimerDialog
-import com.noahjutz.gymroutines.ui.components.RestTimerIconButton
 import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
@@ -223,23 +220,6 @@ private fun WorkoutInProgressContent(
         )
     }
 
-    var restTimerEditorGroup by remember { mutableStateOf<WorkoutSetGroupWithSets?>(null) }
-    restTimerEditorGroup?.let { group ->
-        RestTimerDialog(
-            initialWarmupSeconds = group.group.restTimerWarmupSeconds,
-            initialWorkingSeconds = group.group.restTimerWorkingSeconds,
-            onDismiss = { restTimerEditorGroup = null },
-            onConfirm = { warmupSeconds, workingSeconds ->
-                viewModel.updateRestTimers(group.group.id, warmupSeconds, workingSeconds)
-                restTimerEditorGroup = null
-            },
-            onRemove = {
-                viewModel.updateRestTimers(group.group.id, 0, 0)
-                restTimerEditorGroup = null
-            }
-        )
-    }
-
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
@@ -362,17 +342,6 @@ private fun WorkoutInProgressContent(
 
                     if (exercise != null) {
                         val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
-                        val warmupRest = setGroup.group.restTimerWarmupSeconds
-                        val workingRest = setGroup.group.restTimerWorkingSeconds
-                        val hasRestTimers = warmupRest > 0 || workingRest > 0
-                        val restTimerButton: @Composable () -> Unit = {
-                            RestTimerIconButton(
-                                hasRestTimers = hasRestTimers,
-                                warmupSeconds = warmupRest,
-                                workingSeconds = workingRest,
-                                onClick = { restTimerEditorGroup = setGroup }
-                            )
-                        }
                         if (trimmedNotes.isNotEmpty()) {
                             Surface(
                                 modifier = Modifier
@@ -385,55 +354,50 @@ private fun WorkoutInProgressContent(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = stringResource(R.string.label_exercise_notes),
+                                        tint = colors.primary
+                                    )
+                                    Spacer(Modifier.width(12.dp))
                                     Text(
                                         text = trimmedNotes,
                                         style = typography.body2,
                                         color = colors.onSurface.copy(alpha = 0.9f),
                                         modifier = Modifier.weight(1f)
                                     )
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                notesEditorState = ExerciseNotesDialogState(
-                                                    exerciseId = exercise.exerciseId,
-                                                    name = exercise.name,
-                                                    notes = exercise.notes
-                                                )
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Edit,
-                                                contentDescription = stringResource(R.string.btn_edit_notes),
-                                                tint = colors.primary
+                                    IconButton(
+                                        onClick = {
+                                            notesEditorState = ExerciseNotesDialogState(
+                                                exerciseId = exercise.exerciseId,
+                                                name = exercise.name,
+                                                notes = exercise.notes
                                             )
                                         }
-                                        restTimerButton()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = stringResource(R.string.btn_edit_notes),
+                                            tint = colors.primary
+                                        )
                                     }
                                 }
                             }
                         } else {
-                            Row(
+                            TextButton(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                                    .fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                TextButton(
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        notesEditorState = ExerciseNotesDialogState(
-                                            exerciseId = exercise.exerciseId,
-                                            name = exercise.name,
-                                            notes = exercise.notes
-                                        )
-                                    }
-                                ) {
-                                    Text(stringResource(R.string.btn_add_notes))
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                onClick = {
+                                    notesEditorState = ExerciseNotesDialogState(
+                                        exerciseId = exercise.exerciseId,
+                                        name = exercise.name,
+                                        notes = exercise.notes
+                                    )
                                 }
-                                restTimerButton()
+                            ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.btn_add_notes))
                             }
                         }
                     }

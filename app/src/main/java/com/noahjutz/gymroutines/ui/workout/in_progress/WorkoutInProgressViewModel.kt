@@ -46,10 +46,9 @@ import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroup
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
+import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.REST_TIMER_CHANNEL_ID
 import com.noahjutz.gymroutines.ui.MainActivity
-import com.noahjutz.gymroutines.util.MAX_REST_TIMER_SECONDS
-import com.noahjutz.gymroutines.util.formatRestDuration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -224,35 +223,6 @@ class WorkoutInProgressViewModel(
         viewModelScope.launch {
             exerciseRepository.getExercise(exerciseId)?.let { exercise ->
                 exerciseRepository.update(exercise.copy(notes = notes))
-            }
-        }
-    }
-
-    fun updateRestTimers(groupId: Int, warmupSeconds: Int, workingSeconds: Int) {
-        val clampedWarmup = warmupSeconds.coerceIn(0, MAX_REST_TIMER_SECONDS)
-        val clampedWorking = workingSeconds.coerceIn(0, MAX_REST_TIMER_SECONDS)
-        viewModelScope.launch {
-            workoutRepository.getSetGroup(groupId)?.let { group ->
-                workoutRepository.update(
-                    group.copy(
-                        restTimerWarmupSeconds = clampedWarmup,
-                        restTimerWorkingSeconds = clampedWorking,
-                    )
-                )
-            }
-
-            val current = _restTimerState.value
-            if (current != null && current.groupId == groupId) {
-                val newDuration = if (current.isWarmup) clampedWarmup else clampedWorking
-                if (newDuration <= 0) {
-                    clearRestTimer()
-                } else {
-                    val adjusted = current.copy(
-                        remainingSeconds = current.remainingSeconds.coerceAtMost(newDuration)
-                    )
-                    _restTimerState.value = adjusted
-                    updateRestTimerNotification(adjusted)
-                }
             }
         }
     }

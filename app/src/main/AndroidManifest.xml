@@ -22,7 +22,7 @@
         android:name=".GymRoutinesApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="GymRoutinesBeta"
+        android:label="GymTracker"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.App.Starting">

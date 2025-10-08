@@ -32,7 +32,6 @@ import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -49,17 +48,17 @@ import com.noahjutz.gymroutines.data.domain.Routine
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroupWithSets
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
+import com.noahjutz.gymroutines.ui.components.RestTimerDialog
+import com.noahjutz.gymroutines.ui.components.RestTimerIconButton
 import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.util.RegexPatterns
-import com.noahjutz.gymroutines.util.durationDigitsToSeconds
-import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
-import com.noahjutz.gymroutines.util.secondsToDurationDigits
 import com.noahjutz.gymroutines.util.toStringOrBlank
+import kotlin.math.max
 import org.koin.androidx.compose.getViewModel
 import org.koin.core.parameter.parametersOf
 import kotlinx.coroutines.launch
@@ -127,139 +126,6 @@ fun RoutineEditor(
             }
         }
     }
-}
-
-@Composable
-private fun RestTimerSummary(
-    modifier: Modifier = Modifier,
-    warmupSeconds: Int,
-    workingSeconds: Int,
-    onEdit: () -> Unit,
-) {
-    val colors = MaterialTheme.colors
-    val warmupText = if (warmupSeconds > 0) {
-        formatRestDuration(warmupSeconds)
-    } else {
-        stringResource(R.string.rest_timer_none)
-    }
-    val workingText = if (workingSeconds > 0) {
-        formatRestDuration(workingSeconds)
-    } else {
-        stringResource(R.string.rest_timer_none)
-    }
-
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = colors.primary.copy(alpha = 0.08f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Timer,
-                contentDescription = null,
-                tint = colors.primary
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.rest_timer_label_warmup, warmupText),
-                    style = typography.body2,
-                    color = colors.onSurface
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.rest_timer_label_working, workingText),
-                    style = typography.body2,
-                    color = colors.onSurface
-                )
-            }
-            TextButton(onClick = onEdit) {
-                Text(stringResource(R.string.rest_timer_edit))
-            }
-        }
-    }
-}
-
-@Composable
-private fun RestTimerDialog(
-    initialWarmupSeconds: Int,
-    initialWorkingSeconds: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int, Int) -> Unit,
-    onRemove: () -> Unit,
-) {
-    var warmupValue by rememberSaveable(initialWarmupSeconds) {
-        mutableStateOf(secondsToDurationDigits(initialWarmupSeconds))
-    }
-    var workingValue by rememberSaveable(initialWorkingSeconds) {
-        mutableStateOf(
-            secondsToDurationDigits(initialWorkingSeconds).ifBlank { secondsToDurationDigits(120) }
-        )
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.dialog_title_rest_timer)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.dialog_body_rest_timer))
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = warmupValue,
-                    onValueChange = {
-                        if (it.matches(RegexPatterns.duration)) warmupValue = it
-                    },
-                    label = { Text(stringResource(R.string.rest_timer_warmup_field)) },
-                    placeholder = { Text(stringResource(R.string.rest_timer_none)) },
-                    visualTransformation = durationVisualTransformation,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = workingValue,
-                    onValueChange = {
-                        if (it.matches(RegexPatterns.duration)) workingValue = it
-                    },
-                    label = { Text(stringResource(R.string.rest_timer_working_field)) },
-                    visualTransformation = durationVisualTransformation,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.rest_timer_hint_none),
-                    style = typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
-                if (initialWarmupSeconds > 0 || initialWorkingSeconds > 0) {
-                    Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = onRemove) {
-                        Text(stringResource(R.string.dialog_remove_rest_timer))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val warmupSeconds = durationDigitsToSeconds(warmupValue)
-                    val workingSeconds = durationDigitsToSeconds(workingValue)
-                    onConfirm(warmupSeconds, workingSeconds)
-                }
-            ) {
-                Text(stringResource(R.string.dialog_confirm_rest_timer))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.btn_cancel))
-            }
-        }
-    )
 }
 
 @Composable
@@ -484,90 +350,82 @@ private fun RoutineEditorContent(
                         }
                     }
                     val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
-                        if (trimmedNotes.isNotEmpty()) {
-                            Surface(
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                                    .fillMaxWidth(),
+                    val warmupRest = setGroup.group.restTimerWarmupSeconds
+                    val workingRest = setGroup.group.restTimerWorkingSeconds
+                    val hasRestTimers = warmupRest > 0 || workingRest > 0
+                    val restTimerButton: @Composable () -> Unit = {
+                        RestTimerIconButton(
+                            hasRestTimers = hasRestTimers,
+                            warmupSeconds = warmupRest,
+                            workingSeconds = workingRest,
+                            onClick = { restTimerEditorGroup = setGroup }
+                        )
+                    }
+                    if (trimmedNotes.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                                .fillMaxWidth(),
                             color = colors.primary.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = stringResource(R.string.label_exercise_notes),
-                                    tint = colors.primary
-                                )
-                                Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = trimmedNotes,
                                     style = typography.body2,
                                     color = colors.onSurface.copy(alpha = 0.9f),
                                     modifier = Modifier.weight(1f)
                                 )
-                                IconButton(
-                                    onClick = {
-                                        notesEditorState = ExerciseNotesDialogState(
-                                            exerciseId = exercise.exerciseId,
-                                            name = exercise.name,
-                                            notes = exercise.notes
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            notesEditorState = ExerciseNotesDialogState(
+                                                exerciseId = exercise.exerciseId,
+                                                name = exercise.name,
+                                                notes = exercise.notes
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = stringResource(R.string.btn_edit_notes),
+                                            tint = colors.primary
                                         )
                                     }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = stringResource(R.string.btn_edit_notes),
-                                        tint = colors.primary
-                                    )
+                                    restTimerButton()
                                 }
                             }
                         }
                     } else {
-                        TextButton(
+                        Row(
                             modifier = Modifier
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            onClick = {
-                                notesEditorState = ExerciseNotesDialogState(
-                                    exerciseId = exercise.exerciseId,
-                                    name = exercise.name,
-                                    notes = exercise.notes
-                                )
-                            }
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.btn_add_notes))
+                            TextButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    notesEditorState = ExerciseNotesDialogState(
+                                        exerciseId = exercise.exerciseId,
+                                        name = exercise.name,
+                                        notes = exercise.notes
+                                    )
+                                }
+                            ) {
+                                Text(stringResource(R.string.btn_add_notes))
+                            }
+                            restTimerButton()
                         }
                     }
                     Column(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
-                        val warmupRest = setGroup.group.restTimerWarmupSeconds
-                        val workingRest = setGroup.group.restTimerWorkingSeconds
-                        val hasRestTimers = warmupRest > 0 || workingRest > 0
-
-                        if (hasRestTimers) {
-                            RestTimerSummary(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                                warmupSeconds = warmupRest,
-                                workingSeconds = workingRest,
-                                onEdit = { restTimerEditorGroup = setGroup }
-                            )
-                        } else {
-                            TextButton(
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                                onClick = { restTimerEditorGroup = setGroup }
-                            ) {
-                                Icon(imageVector = Icons.Default.Timer, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.rest_timer_add))
-                            }
-                        }
-
+                        Spacer(Modifier.height(4.dp))
                         Divider(
                             modifier = Modifier
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -631,7 +489,6 @@ private fun RoutineEditorContent(
                                 )
                             }
                         }
-                        var workingSetIndex = 0
                         setGroup.sets.forEachIndexed { index, set ->
                             key(set.routineSetId) {
                                 val dismissState = rememberDismissState()
@@ -646,7 +503,16 @@ private fun RoutineEditorContent(
                                         ) {
                                             SetTypeBadge(
                                                 isWarmup = set.isWarmup,
-                                                index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
+                                                index = if (set.isWarmup) {
+                                                    0
+                                                } else {
+                                                    max(
+                                                        setGroup.sets
+                                                            .take(index + 1)
+                                                            .count { !it.isWarmup } - 1,
+                                                        0
+                                                    )
+                                                },
                                                 modifier = Modifier
                                                     .padding(3.dp)
                                                     .width(WarmupIndicatorWidth),

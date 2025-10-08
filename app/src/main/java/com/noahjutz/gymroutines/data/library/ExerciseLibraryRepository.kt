@@ -3,25 +3,18 @@ package com.noahjutz.gymroutines.data.library
 import android.content.Context
 import android.util.Log
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlin.jvm.Volatile
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
 
 class ExerciseLibraryRepository(
     private val context: Context,
@@ -29,10 +22,6 @@ class ExerciseLibraryRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
-    private val loadMutex = Mutex()
-    private val hasLoaded = AtomicBoolean(false)
-    @Volatile
-    private var loadingJob: Job? = null
 
     private val _exercises = MutableStateFlow<List<LibraryExercise>>(emptyList())
     val exercises: StateFlow<List<LibraryExercise>> = _exercises.asStateFlow()
@@ -46,59 +35,43 @@ class ExerciseLibraryRepository(
     private val _targetMuscles = MutableStateFlow<List<String>>(emptyList())
     val targetMuscles: StateFlow<List<String>> = _targetMuscles.asStateFlow()
 
-    fun ensureLoaded() {
-        if (hasLoaded.get()) return
-        val currentJob = loadingJob
-        if (currentJob?.isActive == true) return
-        val job = scope.launch {
+    init {
+        scope.launch {
             loadLibrary()
         }
-        job.invokeOnCompletion {
-            if (loadingJob === job) {
-                loadingJob = null
-            }
-        }
-        loadingJob = job
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     suspend fun loadLibrary() {
-        if (hasLoaded.get()) return
         withContext(dispatcher) {
-            if (hasLoaded.get()) return@withContext
-            loadMutex.withLock {
-                if (hasLoaded.get()) return@withLock
-                try {
-                    val assets = context.assets
-                    val exercises = assets.open(EXERCISES_PATH).use { stream ->
-                        json.decodeFromStream(
-                            ListSerializer(LibraryExercise.serializer()),
-                            stream
-                        )
-                    }
-                    val sortedExercises =
-                        exercises.sortedBy { it.name.lowercase(Locale.getDefault()) }
-                    _exercises.value = sortedExercises
-
-                    _bodyParts.value =
-                        loadNamedValues(BODYPARTS_PATH, sortedExercises.flatMap { it.bodyParts })
-                    _equipments.value =
-                        loadNamedValues(EQUIPMENTS_PATH, sortedExercises.flatMap { it.equipments })
-                    _targetMuscles.value = loadNamedValues(
-                        MUSCLES_PATH,
-                        sortedExercises.flatMap { it.targetMuscles + it.secondaryMuscles }
+            try {
+                val assets = context.assets
+                val exercisesJson =
+                    assets.open(EXERCISES_PATH).bufferedReader().use { it.readText() }
+                val exercises =
+                    json.decodeFromString(
+                        ListSerializer(LibraryExercise.serializer()),
+                        exercisesJson
                     )
-                    hasLoaded.set(true)
-                } catch (cancellationException: CancellationException) {
-                    throw cancellationException
-                } catch (throwable: Throwable) {
-                    Log.e(TAG, "Failed to load exercise library assets", throwable)
-                    _exercises.value = emptyList()
-                    _bodyParts.value = emptyList()
-                    _equipments.value = emptyList()
-                    _targetMuscles.value = emptyList()
-                    hasLoaded.set(false)
-                }
+                val sortedExercises =
+                    exercises.sortedBy { it.name.lowercase(Locale.getDefault()) }
+                _exercises.value = sortedExercises
+
+                _bodyParts.value =
+                    loadNamedValues(BODYPARTS_PATH, sortedExercises.flatMap { it.bodyParts })
+                _equipments.value =
+                    loadNamedValues(EQUIPMENTS_PATH, sortedExercises.flatMap { it.equipments })
+                _targetMuscles.value = loadNamedValues(
+                    MUSCLES_PATH,
+                    sortedExercises.flatMap { it.targetMuscles + it.secondaryMuscles }
+                )
+            } catch (cancellationException: CancellationException) {
+                throw cancellationException
+            } catch (exception: Exception) {
+                Log.e(TAG, "Failed to load exercise library assets", exception)
+                _exercises.value = emptyList()
+                _bodyParts.value = emptyList()
+                _equipments.value = emptyList()
+                _targetMuscles.value = emptyList()
             }
         }
     }
@@ -107,15 +80,11 @@ class ExerciseLibraryRepository(
         return _exercises.value.firstOrNull { it.id == id }
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     private fun loadNamedValues(path: String, fallback: List<String>): List<String> {
         return try {
-            context.assets.open(path).use { stream ->
-                json.decodeFromStream(
-                    ListSerializer(LibraryNamedValue.serializer()),
-                    stream
-                )
-            }.map { it.name }
+            val text = context.assets.open(path).bufferedReader().use { it.readText() }
+            val values = json.decodeFromString(ListSerializer(LibraryNamedValue.serializer()), text)
+            values.map { it.name }
         } catch (_: Exception) {
             fallback
         }.mapNotNull { it.takeUnless(String::isBlank)?.trim() }

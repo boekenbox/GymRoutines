@@ -55,11 +55,10 @@ import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.util.RegexPatterns
-import com.noahjutz.gymroutines.util.durationDigitsToSeconds
 import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
-import com.noahjutz.gymroutines.util.secondsToDurationDigits
 import com.noahjutz.gymroutines.util.toStringOrBlank
+import kotlin.math.max
 import org.koin.androidx.compose.getViewModel
 import org.koin.core.parameter.parametersOf
 import kotlinx.coroutines.launch
@@ -129,59 +128,8 @@ fun RoutineEditor(
     }
 }
 
-@Composable
-private fun RestTimerSummary(
-    modifier: Modifier = Modifier,
-    warmupSeconds: Int,
-    workingSeconds: Int,
-    onEdit: () -> Unit,
-) {
-    val colors = MaterialTheme.colors
-    val warmupText = if (warmupSeconds > 0) {
-        formatRestDuration(warmupSeconds)
-    } else {
-        stringResource(R.string.rest_timer_none)
-    }
-    val workingText = if (workingSeconds > 0) {
-        formatRestDuration(workingSeconds)
-    } else {
-        stringResource(R.string.rest_timer_none)
-    }
-
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.medium,
-        color = colors.primary.copy(alpha = 0.08f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Timer,
-                contentDescription = null,
-                tint = colors.primary
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.rest_timer_label_warmup, warmupText),
-                    style = typography.body2,
-                    color = colors.onSurface
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.rest_timer_label_working, workingText),
-                    style = typography.body2,
-                    color = colors.onSurface
-                )
-            }
-            TextButton(onClick = onEdit) {
-                Text(stringResource(R.string.rest_timer_edit))
-            }
-        }
-    }
-}
+private const val MAX_REST_TIMER_SECONDS = 99 * 60 + 59
+private const val REST_TIMER_STEP_SECONDS = 15
 
 @Composable
 private fun RestTimerDialog(
@@ -191,12 +139,14 @@ private fun RestTimerDialog(
     onConfirm: (Int, Int) -> Unit,
     onRemove: () -> Unit,
 ) {
-    var warmupValue by rememberSaveable(initialWarmupSeconds) {
-        mutableStateOf(secondsToDurationDigits(initialWarmupSeconds))
+    var warmupSeconds by rememberSaveable(initialWarmupSeconds) {
+        mutableStateOf(initialWarmupSeconds.coerceIn(0, MAX_REST_TIMER_SECONDS))
     }
-    var workingValue by rememberSaveable(initialWorkingSeconds) {
+    var workingSeconds by rememberSaveable(initialWorkingSeconds) {
         mutableStateOf(
-            secondsToDurationDigits(initialWorkingSeconds).ifBlank { secondsToDurationDigits(120) }
+            initialWorkingSeconds.takeIf { it > 0 }
+                ?.coerceIn(0, MAX_REST_TIMER_SECONDS)
+                ?: 120
         )
     }
 
@@ -207,27 +157,17 @@ private fun RestTimerDialog(
             Column {
                 Text(stringResource(R.string.dialog_body_rest_timer))
                 Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = warmupValue,
-                    onValueChange = {
-                        if (it.matches(RegexPatterns.duration)) warmupValue = it
-                    },
-                    label = { Text(stringResource(R.string.rest_timer_warmup_field)) },
-                    placeholder = { Text(stringResource(R.string.rest_timer_none)) },
-                    visualTransformation = durationVisualTransformation,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
+                RestTimerDurationPicker(
+                    label = stringResource(R.string.rest_timer_warmup_field),
+                    seconds = warmupSeconds,
+                    onSecondsChange = { warmupSeconds = it.coerceIn(0, MAX_REST_TIMER_SECONDS) },
+                    showNonePlaceholder = true,
                 )
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = workingValue,
-                    onValueChange = {
-                        if (it.matches(RegexPatterns.duration)) workingValue = it
-                    },
-                    label = { Text(stringResource(R.string.rest_timer_working_field)) },
-                    visualTransformation = durationVisualTransformation,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
+                RestTimerDurationPicker(
+                    label = stringResource(R.string.rest_timer_working_field),
+                    seconds = workingSeconds,
+                    onSecondsChange = { workingSeconds = it.coerceIn(0, MAX_REST_TIMER_SECONDS) },
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -245,11 +185,7 @@ private fun RestTimerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    val warmupSeconds = durationDigitsToSeconds(warmupValue)
-                    val workingSeconds = durationDigitsToSeconds(workingValue)
-                    onConfirm(warmupSeconds, workingSeconds)
-                }
+                onClick = { onConfirm(warmupSeconds, workingSeconds) }
             ) {
                 Text(stringResource(R.string.dialog_confirm_rest_timer))
             }
@@ -260,6 +196,125 @@ private fun RestTimerDialog(
             }
         }
     )
+}
+
+@Composable
+private fun RestTimerDurationPicker(
+    label: String,
+    seconds: Int,
+    onSecondsChange: (Int) -> Unit,
+    showNonePlaceholder: Boolean = false,
+) {
+    val colors = MaterialTheme.colors
+    Column {
+        Text(
+            text = label,
+            style = typography.subtitle2,
+            color = colors.onSurface
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    onSecondsChange((seconds - REST_TIMER_STEP_SECONDS).coerceAtLeast(0))
+                },
+                enabled = seconds > 0
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = stringResource(R.string.rest_timer_decrease)
+                )
+            }
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .defaultMinSize(minWidth = 96.dp)
+                    .heightIn(min = 44.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = colors.onSurface.copy(alpha = 0.05f)
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val labelText = when {
+                        seconds > 0 -> formatRestDuration(seconds)
+                        showNonePlaceholder -> stringResource(R.string.rest_timer_none)
+                        else -> formatRestDuration(seconds)
+                    }
+                    Text(
+                        text = labelText,
+                        style = typography.subtitle1,
+                        color = colors.onSurface
+                    )
+                }
+            }
+            IconButton(
+                onClick = {
+                    onSecondsChange((seconds + REST_TIMER_STEP_SECONDS).coerceAtMost(MAX_REST_TIMER_SECONDS))
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.rest_timer_increase)
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextButton(
+                onClick = {
+                    onSecondsChange((seconds - 30).coerceAtLeast(0))
+                },
+                enabled = seconds > 0
+            ) {
+                Text(stringResource(R.string.rest_timer_minus_30))
+            }
+            TextButton(
+                onClick = {
+                    onSecondsChange((seconds + 30).coerceAtMost(MAX_REST_TIMER_SECONDS))
+                }
+            ) {
+                Text(stringResource(R.string.rest_timer_plus_30))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RestTimerIconButton(
+    hasRestTimers: Boolean,
+    warmupSeconds: Int,
+    workingSeconds: Int,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colors
+    val warmupText = if (warmupSeconds > 0) {
+        formatRestDuration(warmupSeconds)
+    } else {
+        stringResource(R.string.rest_timer_none)
+    }
+    val workingText = if (workingSeconds > 0) {
+        formatRestDuration(workingSeconds)
+    } else {
+        stringResource(R.string.rest_timer_none)
+    }
+    val tint = if (hasRestTimers) colors.primary else colors.onSurface.copy(alpha = 0.6f)
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Default.Timer,
+            contentDescription = stringResource(
+                R.string.rest_timer_icon_description,
+                warmupText,
+                workingText
+            ),
+            tint = tint
+        )
+    }
 }
 
 @Composable
@@ -484,16 +539,27 @@ private fun RoutineEditorContent(
                         }
                     }
                     val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
-                        if (trimmedNotes.isNotEmpty()) {
-                            Surface(
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 6.dp)
-                                    .fillMaxWidth(),
+                    val warmupRest = setGroup.group.restTimerWarmupSeconds
+                    val workingRest = setGroup.group.restTimerWorkingSeconds
+                    val hasRestTimers = warmupRest > 0 || workingRest > 0
+                    val restTimerButton: @Composable () -> Unit = {
+                        RestTimerIconButton(
+                            hasRestTimers = hasRestTimers,
+                            warmupSeconds = warmupRest,
+                            workingSeconds = workingRest,
+                            onClick = { restTimerEditorGroup = setGroup }
+                        )
+                    }
+                    if (trimmedNotes.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                                .fillMaxWidth(),
                             color = colors.primary.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -508,66 +574,55 @@ private fun RoutineEditorContent(
                                     color = colors.onSurface.copy(alpha = 0.9f),
                                     modifier = Modifier.weight(1f)
                                 )
-                                IconButton(
-                                    onClick = {
-                                        notesEditorState = ExerciseNotesDialogState(
-                                            exerciseId = exercise.exerciseId,
-                                            name = exercise.name,
-                                            notes = exercise.notes
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            notesEditorState = ExerciseNotesDialogState(
+                                                exerciseId = exercise.exerciseId,
+                                                name = exercise.name,
+                                                notes = exercise.notes
+                                            )
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = stringResource(R.string.btn_edit_notes),
+                                            tint = colors.primary
                                         )
                                     }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = stringResource(R.string.btn_edit_notes),
-                                        tint = colors.primary
-                                    )
+                                    restTimerButton()
                                 }
                             }
                         }
                     } else {
-                        TextButton(
+                        Row(
                             modifier = Modifier
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            onClick = {
-                                notesEditorState = ExerciseNotesDialogState(
-                                    exerciseId = exercise.exerciseId,
-                                    name = exercise.name,
-                                    notes = exercise.notes
-                                )
-                            }
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.btn_add_notes))
+                            TextButton(
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    notesEditorState = ExerciseNotesDialogState(
+                                        exerciseId = exercise.exerciseId,
+                                        name = exercise.name,
+                                        notes = exercise.notes
+                                    )
+                                }
+                            ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.btn_add_notes))
+                            }
+                            restTimerButton()
                         }
                     }
                     Column(Modifier.padding(vertical = 12.dp, horizontal = 8.dp)) {
-                        val warmupRest = setGroup.group.restTimerWarmupSeconds
-                        val workingRest = setGroup.group.restTimerWorkingSeconds
-                        val hasRestTimers = warmupRest > 0 || workingRest > 0
-
-                        if (hasRestTimers) {
-                            RestTimerSummary(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                                warmupSeconds = warmupRest,
-                                workingSeconds = workingRest,
-                                onEdit = { restTimerEditorGroup = setGroup }
-                            )
-                        } else {
-                            TextButton(
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                                onClick = { restTimerEditorGroup = setGroup }
-                            ) {
-                                Icon(imageVector = Icons.Default.Timer, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.rest_timer_add))
-                            }
-                        }
-
+                        Spacer(Modifier.height(4.dp))
                         Divider(
                             modifier = Modifier
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -631,7 +686,6 @@ private fun RoutineEditorContent(
                                 )
                             }
                         }
-                        var workingSetIndex = 0
                         setGroup.sets.forEachIndexed { index, set ->
                             key(set.routineSetId) {
                                 val dismissState = rememberDismissState()
@@ -646,7 +700,16 @@ private fun RoutineEditorContent(
                                         ) {
                                             SetTypeBadge(
                                                 isWarmup = set.isWarmup,
-                                                index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
+                                                index = if (set.isWarmup) {
+                                                    0
+                                                } else {
+                                                    max(
+                                                        setGroup.sets
+                                                            .take(index + 1)
+                                                            .count { !it.isWarmup } - 1,
+                                                        0
+                                                    )
+                                                },
                                                 modifier = Modifier
                                                     .padding(3.dp)
                                                     .width(WarmupIndicatorWidth),

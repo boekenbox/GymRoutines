@@ -22,6 +22,8 @@ import android.app.Application
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -31,6 +33,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.TaskStackBuilder
 import androidx.core.net.toUri
+import androidx.core.content.ContextCompat
+import android.media.Ringtone
+import android.media.RingtoneManager
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.AppPrefs
 import com.noahjutz.gymroutines.data.ExerciseRepository
@@ -310,6 +315,8 @@ class WorkoutInProgressViewModel(
             application.getString(R.string.rest_timer_indicator_working)
         }
 
+        playRestTimerFeedback()
+
         val builder = NotificationCompat.Builder(application, REST_TIMER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_gymroutines)
             .setContentTitle(application.getString(R.string.rest_timer_notification_complete_title))
@@ -318,18 +325,32 @@ class WorkoutInProgressViewModel(
             )
             .setAutoCancel(true)
             .setContentIntent(createWorkoutPendingIntent())
-
-        if (!restTimerSoundEnabled && !restTimerVibrationEnabled) {
-            builder.setSilent(true)
-        } else {
-            var defaults = 0
-            if (restTimerSoundEnabled) defaults = defaults or NotificationCompat.DEFAULT_SOUND
-            if (restTimerVibrationEnabled) defaults = defaults or NotificationCompat.DEFAULT_VIBRATE
-            builder.setDefaults(defaults)
-        }
+            .setSilent(true)
 
         NotificationManagerCompat.from(application).notify(REST_TIMER_NOTIFICATION_ID, builder.build())
         _restTimerState.value = null
+    }
+
+    private fun playRestTimerFeedback() {
+        if (restTimerSoundEnabled) {
+            val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            if (notificationUri != null) {
+                val ringtone: Ringtone? = RingtoneManager.getRingtone(application, notificationUri)
+                ringtone?.play()
+            }
+        }
+        if (restTimerVibrationEnabled) {
+            val vibrator = ContextCompat.getSystemService(application, Vibrator::class.java)
+            vibrator?.let {
+                if (!it.hasVibrator()) return@let
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    it.vibrate(VibrationEffect.createOneShot(400L, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    it.vibrate(400L)
+                }
+            }
+        }
     }
 
     private fun updateRestTimerNotification(state: RestTimerState?) {

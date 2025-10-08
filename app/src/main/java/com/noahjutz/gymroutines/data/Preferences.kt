@@ -70,6 +70,16 @@ sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {
         key = floatPreferencesKey("bodyWeight"),
         defaultValue = 80f
     )
+
+    data object RestTimerSound : AppPrefs<Boolean>(
+        key = booleanPreferencesKey("restTimerSound"),
+        defaultValue = true,
+    )
+
+    data object RestTimerVibration : AppPrefs<Boolean>(
+        key = booleanPreferencesKey("restTimerVibration"),
+        defaultValue = true,
+    )
 }
 
 suspend fun DataStore<Preferences>.resetAppSettings() {
@@ -80,5 +90,7 @@ suspend fun DataStore<Preferences>.resetAppSettings() {
         it[AppPrefs.InsightsProgressMetric.key] = AppPrefs.InsightsProgressMetric.defaultValue
         it[AppPrefs.InsightsSelectedExercise.key] = AppPrefs.InsightsSelectedExercise.defaultValue
         it[AppPrefs.BodyWeight.key] = AppPrefs.BodyWeight.defaultValue
+        it[AppPrefs.RestTimerSound.key] = AppPrefs.RestTimerSound.defaultValue
+        it[AppPrefs.RestTimerVibration.key] = AppPrefs.RestTimerVibration.defaultValue
     }
 }

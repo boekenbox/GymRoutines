@@ -1,15 +1,19 @@
 package com.noahjutz.gymroutines.ui.settings.general
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.noahjutz.gymroutines.R
@@ -34,19 +38,48 @@ fun GeneralSettings(
             )
         }
     ) { paddingValues ->
-        Box(Modifier.padding(paddingValues)) {
-            val (isVisible, setIsVisible) = remember { mutableStateOf(false) }
+        val restTimerSound by viewModel.restTimerSound.collectAsState()
+        val restTimerVibration by viewModel.restTimerVibration.collectAsState()
+        val (isVisible, setIsVisible) = remember { mutableStateOf(false) }
+
+        Column(Modifier.padding(paddingValues)) {
+            ListItem(
+                modifier = Modifier.clickable { viewModel.setRestTimerSound(!restTimerSound) },
+                text = { Text(stringResource(R.string.pref_rest_timer_sound)) },
+                secondaryText = { Text(stringResource(R.string.pref_detail_rest_timer_sound)) },
+                icon = { Icon(Icons.Default.VolumeUp, null) },
+                trailing = {
+                    Switch(
+                        checked = restTimerSound,
+                        onCheckedChange = { viewModel.setRestTimerSound(it) }
+                    )
+                }
+            )
+            Divider()
+            ListItem(
+                modifier = Modifier.clickable { viewModel.setRestTimerVibration(!restTimerVibration) },
+                text = { Text(stringResource(R.string.pref_rest_timer_vibration)) },
+                secondaryText = { Text(stringResource(R.string.pref_detail_rest_timer_vibration)) },
+                icon = { Icon(Icons.Default.Vibration, null) },
+                trailing = {
+                    Switch(
+                        checked = restTimerVibration,
+                        onCheckedChange = { viewModel.setRestTimerVibration(it) }
+                    )
+                }
+            )
+            Divider()
             ListItem(
                 modifier = Modifier.clickable { setIsVisible(true) },
                 text = { Text(stringResource(R.string.pref_reset_settings)) },
                 icon = { Icon(Icons.Default.RestartAlt, null) }
             )
-            ResetDialog(
-                isVisible = isVisible,
-                onDismiss = { setIsVisible(false) },
-                onReset = { viewModel.resetSettings() }
-            )
         }
+        ResetDialog(
+            isVisible = isVisible,
+            onDismiss = { setIsVisible(false) },
+            onReset = { viewModel.resetSettings() }
+        )
     }
 }
 

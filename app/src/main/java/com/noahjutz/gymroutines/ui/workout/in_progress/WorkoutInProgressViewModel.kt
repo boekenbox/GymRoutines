@@ -19,11 +19,18 @@
 package com.noahjutz.gymroutines.ui.workout.in_progress
 
 import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
+import android.os.Build
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.TaskStackBuilder
+import androidx.core.net.toUri
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.AppPrefs
 import com.noahjutz.gymroutines.data.ExerciseRepository
@@ -34,12 +41,28 @@ import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroup
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
+import com.noahjutz.gymroutines.util.formatRestDuration
+import com.noahjutz.gymroutines.REST_TIMER_CHANNEL_ID
+import com.noahjutz.gymroutines.ui.MainActivity
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
+
+private const val REST_TIMER_NOTIFICATION_ID = 1
+
+data class RestTimerState(
+    val setId: Int,
+    val groupId: Int,
+    val isWarmup: Boolean,
+    val remainingSeconds: Int,
+)
 
 class WorkoutInProgressViewModel(
     private val preferences: DataStore<Preferences>,
@@ -47,10 +70,15 @@ class WorkoutInProgressViewModel(
     private val exerciseRepository: ExerciseRepository,
     private val routineRepository: RoutineRepository,
     private val application: Application,
-    workoutId: Int,
+    private val workoutId: Int,
 ) : ViewModel() {
     val workout = workoutRepository.getWorkoutFlow(workoutId)
     private var _workout: WorkoutWithSetGroups? = null
+    private val _restTimerState = MutableStateFlow<RestTimerState?>(null)
+    val restTimerState: StateFlow<RestTimerState?> = _restTimerState.asStateFlow()
+    private var restTimerJob: Job? = null
+    private var restTimerSoundEnabled = AppPrefs.RestTimerSound.defaultValue
+    private var restTimerVibrationEnabled = AppPrefs.RestTimerVibration.defaultValue
 
     val routineName = workout.map {
         it?.workout?.routineId?.let { routineId ->
@@ -63,6 +91,15 @@ class WorkoutInProgressViewModel(
             launch {
                 workout.collect { workout ->
                     _workout = workout
+                }
+            }
+            launch {
+                preferences.data.collect { prefs ->
+                    restTimerSoundEnabled =
+                        prefs[AppPrefs.RestTimerSound.key] ?: AppPrefs.RestTimerSound.defaultValue
+                    restTimerVibrationEnabled =
+                        prefs[AppPrefs.RestTimerVibration.key]
+                            ?: AppPrefs.RestTimerVibration.defaultValue
                 }
             }
             launch {
@@ -188,6 +225,152 @@ class WorkoutInProgressViewModel(
     fun updateChecked(set: WorkoutSet, checked: Boolean) {
         viewModelScope.launch {
             workoutRepository.update(set.copy(complete = checked))
+            if (checked && !set.complete) {
+                startRestTimer(set)
+            } else if (!checked && set.complete) {
+                cancelRestTimerIfMatches(set)
+            }
+        }
+    }
+
+    fun adjustRestTimer(amountSeconds: Int) {
+        if (amountSeconds == 0) return
+        val current = _restTimerState.value ?: return
+        val newRemaining = (current.remainingSeconds + amountSeconds).coerceAtLeast(0)
+        if (newRemaining == 0) {
+            clearRestTimer()
+            return
+        }
+        val updated = current.copy(remainingSeconds = newRemaining)
+        _restTimerState.value = updated
+        updateRestTimerNotification(updated)
+    }
+
+    private fun startRestTimer(set: WorkoutSet) {
+        val workout = _workout ?: return
+        val group = workout.setGroups.firstOrNull { it.group.id == set.groupId } ?: return
+        val duration = if (set.isWarmup) {
+            group.group.restTimerWarmupSeconds
+        } else {
+            group.group.restTimerWorkingSeconds
+        }
+        if (duration <= 0) {
+            clearRestTimer()
+            return
+        }
+
+        clearRestTimer()
+
+        val initialState = RestTimerState(
+            setId = set.workoutSetId,
+            groupId = set.groupId,
+            isWarmup = set.isWarmup,
+            remainingSeconds = duration,
+        )
+        _restTimerState.value = initialState
+        updateRestTimerNotification(initialState)
+
+        restTimerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                val currentState = _restTimerState.value ?: break
+                if (currentState.remainingSeconds <= 1) {
+                    completeRestTimer()
+                    break
+                }
+                val updatedState = currentState.copy(remainingSeconds = currentState.remainingSeconds - 1)
+                _restTimerState.value = updatedState
+                updateRestTimerNotification(updatedState)
+            }
+        }
+    }
+
+    private fun cancelRestTimerIfMatches(set: WorkoutSet) {
+        val current = _restTimerState.value ?: return
+        if (current.setId == set.workoutSetId) {
+            clearRestTimer()
+        }
+    }
+
+    private fun clearRestTimer() {
+        restTimerJob?.cancel()
+        restTimerJob = null
+        _restTimerState.value = null
+        NotificationManagerCompat.from(application).cancel(REST_TIMER_NOTIFICATION_ID)
+    }
+
+    private fun completeRestTimer() {
+        val state = _restTimerState.value ?: return
+        restTimerJob?.cancel()
+        restTimerJob = null
+
+        val label = if (state.isWarmup) {
+            application.getString(R.string.rest_timer_indicator_warmup)
+        } else {
+            application.getString(R.string.rest_timer_indicator_working)
+        }
+
+        val builder = NotificationCompat.Builder(application, REST_TIMER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_gymroutines)
+            .setContentTitle(application.getString(R.string.rest_timer_notification_complete_title))
+            .setContentText(
+                application.getString(R.string.rest_timer_notification_complete_body, label)
+            )
+            .setAutoCancel(true)
+            .setContentIntent(createWorkoutPendingIntent())
+
+        if (!restTimerSoundEnabled && !restTimerVibrationEnabled) {
+            builder.setSilent(true)
+        } else {
+            var defaults = 0
+            if (restTimerSoundEnabled) defaults = defaults or NotificationCompat.DEFAULT_SOUND
+            if (restTimerVibrationEnabled) defaults = defaults or NotificationCompat.DEFAULT_VIBRATE
+            builder.setDefaults(defaults)
+        }
+
+        NotificationManagerCompat.from(application).notify(REST_TIMER_NOTIFICATION_ID, builder.build())
+        _restTimerState.value = null
+    }
+
+    private fun updateRestTimerNotification(state: RestTimerState?) {
+        val notificationManager = NotificationManagerCompat.from(application)
+        if (state == null) {
+            notificationManager.cancel(REST_TIMER_NOTIFICATION_ID)
+            return
+        }
+        val label = if (state.isWarmup) {
+            application.getString(R.string.rest_timer_indicator_warmup)
+        } else {
+            application.getString(R.string.rest_timer_indicator_working)
+        }
+        val builder = NotificationCompat.Builder(application, REST_TIMER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_gymroutines)
+            .setContentTitle(application.getString(R.string.rest_timer_notification_running_title))
+            .setContentText(
+                application.getString(
+                    R.string.rest_timer_notification_running_body,
+                    label,
+                    formatRestDuration(state.remainingSeconds)
+                )
+            )
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setContentIntent(createWorkoutPendingIntent())
+
+        notificationManager.notify(REST_TIMER_NOTIFICATION_ID, builder.build())
+    }
+
+    private fun createWorkoutPendingIntent(): PendingIntent? {
+        val workoutIntent = Intent(
+            Intent.ACTION_VIEW,
+            "https://gymroutines.com/workoutInProgress/$workoutId".toUri(),
+            application,
+            MainActivity::class.java
+        )
+        val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        return TaskStackBuilder.create(application).run {
+            addNextIntentWithParentStack(workoutIntent)
+            getPendingIntent(1, PendingIntent.FLAG_UPDATE_CURRENT or flag)
         }
     }
 
@@ -201,6 +384,7 @@ class WorkoutInProgressViewModel(
 
     fun cancelWorkout(onCompletion: () -> Unit) {
         _workout?.let { workout ->
+            clearRestTimer()
             viewModelScope.launch {
                 workoutRepository.delete(workout.workout)
                 preferences.edit { it[AppPrefs.CurrentWorkout.key] = -1 }
@@ -210,9 +394,15 @@ class WorkoutInProgressViewModel(
     }
 
     fun finishWorkout(onCompletion: () -> Unit) {
+        clearRestTimer()
         viewModelScope.launch {
             preferences.edit { it[AppPrefs.CurrentWorkout.key] = -1 }
             onCompletion()
         }
+    }
+
+    override fun onCleared() {
+        clearRestTimer()
+        super.onCleared()
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -43,6 +44,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -95,6 +97,7 @@ import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.util.RegexPatterns
+import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.pretty
 import com.noahjutz.gymroutines.util.toStringOrBlank
@@ -196,6 +199,8 @@ private fun WorkoutInProgressContent(
             onDismiss = { pendingSetTypeChange = null }
         )
     }
+
+    val restTimerState by viewModel.restTimerState.collectAsState()
 
     val sortedSetGroups by remember(workout.setGroups) {
         derivedStateOf { workout.setGroups.sortedBy { it.group.position } }
@@ -504,178 +509,205 @@ private fun WorkoutInProgressContent(
                                     background = { SwipeToDeleteBackground(dismissState) },
                                 ) {
                                     Surface(color = colors.surface) {
-                                        Row(
+                                        Column(
                                             Modifier.padding(horizontal = 2.dp, vertical = 1.dp)
                                         ) {
-                                            SetTypeBadge(
-                                                isWarmup = set.isWarmup,
-                                                index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
-                                                modifier = Modifier
-                                                    .padding(3.dp)
-                                                    .width(WarmupIndicatorWidth),
-                                                onToggle = {
-                                                    val makeWarmup = !set.isWarmup
-                                                    if (!makeWarmup || setGroup.sets.take(index).all { it.isWarmup }) {
-                                                        pendingSetTypeChange = set to makeWarmup
-                                                    }
-                                                }
-                                            )
-                                            val textFieldStyle = typography.body1.copy(
-                                                textAlign = TextAlign.Center,
-                                                color = colors.onSurface
-                                            )
-                                            val decorationBox: @Composable (@Composable () -> Unit) -> Unit =
-                                                { innerTextField ->
-                                                    Surface(
-                                                        color = colors.surface,
-                                                        shape = MaterialTheme.shapes.small,
-                                                        border = BorderStroke(
-                                                            1.dp,
-                                                            colors.onSurface.copy(alpha = 0.06f)
-                                                        )
-                                                    ) {
-                                                        Box(
-                                                            Modifier
-                                                                .heightIn(min = 44.dp)
-                                                                .padding(horizontal = 6.dp, vertical = 6.dp),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            innerTextField()
+                                            Row(
+                                                Modifier.fillMaxWidth()
+                                            ) {
+                                                SetTypeBadge(
+                                                    isWarmup = set.isWarmup,
+                                                    index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
+                                                    modifier = Modifier
+                                                        .padding(3.dp)
+                                                        .width(WarmupIndicatorWidth),
+                                                    onToggle = {
+                                                        val makeWarmup = !set.isWarmup
+                                                        if (!makeWarmup || setGroup.sets.take(index).all { it.isWarmup }) {
+                                                            pendingSetTypeChange = set to makeWarmup
                                                         }
                                                     }
-                                                }
-                                            if (exercise?.logReps == true) {
-                                                val (reps, setReps) = remember { mutableStateOf(set.reps.toStringOrBlank()) }
-                                                LaunchedEffect(reps) {
-                                                    val repsInt = reps.toIntOrNull()
-                                                    viewModel.updateReps(set, repsInt)
-                                                }
-                                                AutoSelectTextField(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .padding(3.dp),
-                                                    value = reps,
-                                                    onValueChange = {
-                                                        if (it.matches(RegexPatterns.integer))
-                                                            setReps(it)
-                                                    },
-                                                    textStyle = textFieldStyle,
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                    singleLine = true,
-                                                    cursorColor = colors.onSurface,
-                                                    decorationBox = decorationBox,
                                                 )
-                                            }
-                                            if (exercise?.logWeight == true) {
-                                                val (weight, setWeight) = remember {
-                                                    mutableStateOf(
-                                                        set.weight.formatSimple()
-                                                    )
-                                                }
-                                                LaunchedEffect(weight) {
-                                                    val weightDouble = weight.toDoubleOrNull()
-                                                    viewModel.updateWeight(set, weightDouble)
-                                                }
-                                                AutoSelectTextField(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .padding(3.dp),
-                                                    value = weight,
-                                                    onValueChange = {
-                                                        if (it.matches(RegexPatterns.float))
-                                                            setWeight(it)
-                                                    },
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                    singleLine = true,
-                                                    textStyle = textFieldStyle,
-                                                    cursorColor = colors.onSurface,
-                                                    decorationBox = decorationBox
+                                                val textFieldStyle = typography.body1.copy(
+                                                    textAlign = TextAlign.Center,
+                                                    color = colors.onSurface
                                                 )
-                                            }
-                                            if (exercise?.logTime == true) {
-                                                val (time, setTime) = remember { mutableStateOf(set.time.toStringOrBlank()) }
-                                                LaunchedEffect(time) {
-                                                    val timeInt = time.toIntOrNull()
-                                                    viewModel.updateTime(set, timeInt)
-                                                }
-                                                AutoSelectTextField(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .padding(3.dp),
-                                                    value = time,
-                                                    onValueChange = {
-                                                        if (it.matches(RegexPatterns.duration))
-                                                            setTime(it)
-                                                    },
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                    singleLine = true,
-                                                    textStyle = textFieldStyle,
-                                                    visualTransformation = durationVisualTransformation,
-                                                    cursorColor = colors.onSurface,
-                                                    decorationBox = decorationBox
-                                                )
-                                            }
-                                            if (exercise?.logDistance == true) {
-                                                val (distance, setDistance) = remember {
-                                                    mutableStateOf(
-                                                        set.distance.formatSimple()
-                                                    )
-                                                }
-                                                LaunchedEffect(distance) {
-                                                    val distanceDouble = distance.toDoubleOrNull()
-                                                    viewModel.updateDistance(set, distanceDouble)
-                                                }
-                                                AutoSelectTextField(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .padding(3.dp),
-                                                    value = distance,
-                                                    onValueChange = {
-                                                        if (it.matches(RegexPatterns.float))
-                                                            setDistance(it)
-                                                    },
-                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                    singleLine = true,
-                                                    textStyle = textFieldStyle,
-                                                    cursorColor = colors.onSurface,
-                                                    decorationBox = decorationBox
-                                                )
-                                            }
-                                            val completionBackground by animateColorAsState(
-                                                if (set.complete) lerp(
-                                                    colors.surface,
-                                                    colors.secondary,
-                                                    0.45f
-                                                ) else colors.onSurface.copy(alpha = 0.05f)
-                                            )
-                                            val completionContent = if (set.complete) {
-                                                contentColorFor(completionBackground)
-                                            } else colors.onSurface
-                                            Box(
-                                                Modifier
-                                                    .padding(3.dp)
-                                                    .size(44.dp)
-                                                    .clip(MaterialTheme.shapes.small)
-                                                    .toggleable(
-                                                        value = set.complete,
+                                                val decorationBox: @Composable (@Composable () -> Unit) -> Unit =
+                                                    { innerTextField ->
+                                                        Surface(
+                                                            color = colors.surface,
+                                                            shape = MaterialTheme.shapes.small,
+                                                            border = BorderStroke(
+                                                                1.dp,
+                                                                colors.onSurface.copy(alpha = 0.06f)
+                                                            )
+                                                        ) {
+                                                            Box(
+                                                                Modifier
+                                                                    .heightIn(min = 44.dp)
+                                                                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                innerTextField()
+                                                            }
+                                                        }
+                                                    }
+                                                if (exercise?.logReps == true) {
+                                                    val (reps, setReps) = remember { mutableStateOf(set.reps.toStringOrBlank()) }
+                                                    LaunchedEffect(reps) {
+                                                        val repsInt = reps.toIntOrNull()
+                                                        viewModel.updateReps(set, repsInt)
+                                                    }
+                                                    AutoSelectTextField(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(3.dp),
+                                                        value = reps,
                                                         onValueChange = {
-                                                            viewModel.updateChecked(set, it)
+                                                            if (it.matches(RegexPatterns.integer))
+                                                                setReps(it)
                                                         },
-                                                    )
-                                                    .background(completionBackground),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                androidx.compose.animation.AnimatedVisibility(
-                                                    visible = set.complete,
-                                                    enter = fadeIn(),
-                                                    exit = fadeOut()
-                                                ) {
-                                                    Icon(
-                                                        Icons.Default.Check,
-                                                        stringResource(R.string.column_set_complete),
-                                                        tint = completionContent
+                                                        textStyle = textFieldStyle,
+                                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                        singleLine = true,
+                                                        cursorColor = colors.onSurface,
+                                                        decorationBox = decorationBox,
                                                     )
                                                 }
+                                                if (exercise?.logWeight == true) {
+                                                    val (weight, setWeight) = remember {
+                                                        mutableStateOf(
+                                                            set.weight.formatSimple()
+                                                        )
+                                                    }
+                                                    LaunchedEffect(weight) {
+                                                        val weightDouble = weight.toDoubleOrNull()
+                                                        viewModel.updateWeight(set, weightDouble)
+                                                    }
+                                                    AutoSelectTextField(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(3.dp),
+                                                        value = weight,
+                                                        onValueChange = {
+                                                            if (it.matches(RegexPatterns.float))
+                                                                setWeight(it)
+                                                        },
+                                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                        singleLine = true,
+                                                        textStyle = textFieldStyle,
+                                                        cursorColor = colors.onSurface,
+                                                        decorationBox = decorationBox
+                                                    )
+                                                }
+                                                if (exercise?.logTime == true) {
+                                                    val (time, setTime) = remember { mutableStateOf(set.time.toStringOrBlank()) }
+                                                    LaunchedEffect(time) {
+                                                        val timeInt = time.toIntOrNull()
+                                                        viewModel.updateTime(set, timeInt)
+                                                    }
+                                                    AutoSelectTextField(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(3.dp),
+                                                        value = time,
+                                                        onValueChange = {
+                                                            if (it.matches(RegexPatterns.duration))
+                                                                setTime(it)
+                                                        },
+                                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                        singleLine = true,
+                                                        textStyle = textFieldStyle,
+                                                        visualTransformation = durationVisualTransformation,
+                                                        cursorColor = colors.onSurface,
+                                                        decorationBox = decorationBox
+                                                    )
+                                                }
+                                                if (exercise?.logDistance == true) {
+                                                    val (distance, setDistance) = remember {
+                                                        mutableStateOf(
+                                                            set.distance.formatSimple()
+                                                        )
+                                                    }
+                                                    LaunchedEffect(distance) {
+                                                        val distanceDouble = distance.toDoubleOrNull()
+                                                        viewModel.updateDistance(set, distanceDouble)
+                                                    }
+                                                    AutoSelectTextField(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .padding(3.dp),
+                                                        value = distance,
+                                                        onValueChange = {
+                                                            if (it.matches(RegexPatterns.float))
+                                                                setDistance(it)
+                                                        },
+                                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                        singleLine = true,
+                                                        textStyle = textFieldStyle,
+                                                        cursorColor = colors.onSurface,
+                                                        decorationBox = decorationBox
+                                                    )
+                                                }
+                                                val completionBackground by animateColorAsState(
+                                                    if (set.complete) lerp(
+                                                        colors.surface,
+                                                        colors.secondary,
+                                                        0.45f
+                                                    ) else colors.onSurface.copy(alpha = 0.05f)
+                                                )
+                                                val completionContent = if (set.complete) {
+                                                    contentColorFor(completionBackground)
+                                                } else colors.onSurface
+                                                Box(
+                                                    Modifier
+                                                        .padding(3.dp)
+                                                        .size(44.dp)
+                                                        .clip(MaterialTheme.shapes.small)
+                                                        .toggleable(
+                                                            value = set.complete,
+                                                            onValueChange = {
+                                                                viewModel.updateChecked(set, it)
+                                                            },
+                                                        )
+                                                        .background(completionBackground),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    androidx.compose.animation.AnimatedVisibility(
+                                                        visible = set.complete,
+                                                        enter = fadeIn(),
+                                                        exit = fadeOut()
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Check,
+                                                            stringResource(R.string.column_set_complete),
+                                                            tint = completionContent
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            val restDuration = if (set.isWarmup) {
+                                                setGroup.group.restTimerWarmupSeconds
+                                            } else {
+                                                setGroup.group.restTimerWorkingSeconds
+                                            }
+                                            if (restDuration > 0) {
+                                                val isActive = restTimerState?.setId == set.workoutSetId
+                                                val remaining = if (isActive) {
+                                                    restTimerState?.remainingSeconds ?: restDuration
+                                                } else {
+                                                    restDuration
+                                                }
+                                                RestTimerIndicator(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 4.dp),
+                                                    isActive = isActive,
+                                                    isWarmup = set.isWarmup,
+                                                    remainingSeconds = remaining,
+                                                    onAdd = { viewModel.adjustRestTimer(30) },
+                                                    onSubtract = { viewModel.adjustRestTimer(-30) },
+                                                )
                                             }
                                         }
                                     }
@@ -797,4 +829,68 @@ private fun SetTypeChangeDialog(
             }
         }
     )
+}
+
+@Composable
+private fun RestTimerIndicator(
+    modifier: Modifier = Modifier,
+    isActive: Boolean,
+    isWarmup: Boolean,
+    remainingSeconds: Int,
+    onAdd: () -> Unit,
+    onSubtract: () -> Unit,
+) {
+    val indicatorColor = MaterialTheme.colors.secondary.copy(alpha = 0.35f)
+    if (!isActive) {
+        Box(
+            modifier = modifier
+                .height(3.dp)
+                .clip(RoundedCornerShape(percent = 50))
+                .background(indicatorColor)
+        )
+    } else {
+        Surface(
+            modifier = modifier,
+            shape = MaterialTheme.shapes.medium,
+            color = indicatorColor.copy(alpha = 0.5f)
+        ) {
+            Row(
+                Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val label = if (isWarmup) {
+                    stringResource(R.string.rest_timer_indicator_warmup)
+                } else {
+                    stringResource(R.string.rest_timer_indicator_working)
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = formatRestDuration(remainingSeconds),
+                    style = typography.subtitle1.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colors.onSurface
+                )
+                Spacer(Modifier.width(8.dp))
+                TextButton(
+                    onClick = onSubtract,
+                    enabled = isActive && remainingSeconds > 0,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(stringResource(R.string.rest_timer_minus_30))
+                }
+                Spacer(Modifier.width(4.dp))
+                TextButton(
+                    onClick = onAdd,
+                    enabled = isActive,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(stringResource(R.string.rest_timer_plus_30))
+                }
+            }
+        }
+    }
 }

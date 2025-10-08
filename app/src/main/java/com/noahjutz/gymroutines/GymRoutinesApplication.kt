@@ -47,6 +47,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
 const val PERSISTENT_WORKOUT_CHANNEL_ID = "persistent-workout-notification"
+const val REST_TIMER_CHANNEL_ID = "rest-timer-notification"
 
 class GymRoutinesApplication : Application() {
     private val preferences: DataStore<Preferences> by inject()
@@ -148,6 +149,16 @@ class GymRoutinesApplication : Application() {
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+            val restName = getString(R.string.channel_name_rest_timer)
+            val restDescription = getString(R.string.channel_description_rest_timer)
+            val restChannel = NotificationChannel(
+                REST_TIMER_CHANNEL_ID,
+                restName,
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = restDescription
+            }
+            notificationManager.createNotificationChannel(restChannel)
         }
     }
 }

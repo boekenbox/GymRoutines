@@ -176,6 +176,19 @@ class RoutineEditorViewModel(
         }
     }
 
+    fun updateRestTimers(groupId: Int, warmupSeconds: Int, workingSeconds: Int) {
+        viewModelScope.launch {
+            routineRepository.getSetGroup(groupId)?.let { group ->
+                routineRepository.update(
+                    group.copy(
+                        restTimerWarmupSeconds = warmupSeconds,
+                        restTimerWorkingSeconds = workingSeconds,
+                    )
+                )
+            }
+        }
+    }
+
     private fun canBeWarmup(set: RoutineSet): Boolean {
         val setsInGroup = _sets
             .filter { it.groupId == set.groupId }
@@ -199,7 +212,9 @@ class RoutineEditorViewModel(
                     val workoutSetGroup = WorkoutSetGroup(
                         workoutId = workoutId.toInt(),
                         exerciseId = routineSetGroup.exerciseId,
-                        position = routineSetGroup.position
+                        position = routineSetGroup.position,
+                        restTimerWarmupSeconds = routineSetGroup.restTimerWarmupSeconds,
+                        restTimerWorkingSeconds = routineSetGroup.restTimerWorkingSeconds,
                     )
                     val setGroupId = workoutRepository.insert(workoutSetGroup)
 

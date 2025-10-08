@@ -20,6 +20,8 @@ data class RoutineSetGroup(
     val routineId: Int,
     val exerciseId: Int,
     val position: Int,
+    val restTimerWarmupSeconds: Int = 0,
+    val restTimerWorkingSeconds: Int = 0,
 
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

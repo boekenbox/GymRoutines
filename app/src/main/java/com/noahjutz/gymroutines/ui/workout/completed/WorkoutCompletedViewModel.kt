@@ -57,6 +57,8 @@ class WorkoutCompletedViewModel(
                 routineId = routineId,
                 exerciseId = setGroup.exerciseId,
                 position = setGroup.position,
+                restTimerWarmupSeconds = setGroup.restTimerWarmupSeconds,
+                restTimerWorkingSeconds = setGroup.restTimerWorkingSeconds,
             )
             val groupId = routineRepository.insert(routineSetGroup)
             for (set in workoutSets.filter { it.groupId == setGroup.id }) {

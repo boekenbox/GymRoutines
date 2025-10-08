@@ -40,7 +40,7 @@ import kotlinx.serialization.json.*
         WorkoutSet::class,
         WorkoutSetGroup::class,
     ],
-    version = 44,
+    version = 45,
     autoMigrations = [AutoMigration(from = 35, to = 36)],
     exportSchema = true
 )
@@ -616,5 +616,22 @@ val MIGRATION_43_44 = object : Migration(43, 44) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE routine_set_table ADD COLUMN isWarmup INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE workout_set_table ADD COLUMN isWarmup INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_44_45 = object : Migration(44, 45) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE routine_set_group_table ADD COLUMN restTimerWarmupSeconds INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE routine_set_group_table ADD COLUMN restTimerWorkingSeconds INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE workout_set_group_table ADD COLUMN restTimerWarmupSeconds INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "ALTER TABLE workout_set_group_table ADD COLUMN restTimerWorkingSeconds INTEGER NOT NULL DEFAULT 0"
+        )
     }
 }

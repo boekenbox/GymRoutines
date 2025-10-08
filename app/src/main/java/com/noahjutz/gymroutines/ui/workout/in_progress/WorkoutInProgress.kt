@@ -84,13 +84,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.lerp
 import com.noahjutz.gymroutines.R
+import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
+import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
+import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.util.RegexPatterns
 import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.pretty
@@ -181,6 +184,18 @@ private fun WorkoutInProgressContent(
             viewModel.cancelWorkout(popBackStack)
         }
     )
+
+    var pendingSetTypeChange by remember { mutableStateOf<Pair<WorkoutSet, Boolean>?>(null) }
+    pendingSetTypeChange?.let { (set, makeWarmup) ->
+        SetTypeChangeDialog(
+            isWarmup = makeWarmup,
+            onConfirm = {
+                viewModel.updateWarmup(set, makeWarmup)
+                pendingSetTypeChange = null
+            },
+            onDismiss = { pendingSetTypeChange = null }
+        )
+    }
 
     val sortedSetGroups by remember(workout.setGroups) {
         derivedStateOf { workout.setGroups.sortedBy { it.group.position } }
@@ -324,13 +339,13 @@ private fun WorkoutInProgressContent(
                         if (trimmedNotes.isNotEmpty()) {
                             Surface(
                                 modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
                                     .fillMaxWidth(),
                                 color = colors.primary.copy(alpha = 0.08f),
                                 shape = MaterialTheme.shapes.medium
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
@@ -365,7 +380,7 @@ private fun WorkoutInProgressContent(
                         } else {
                             TextButton(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
                                 onClick = {
                                     notesEditorState = ExerciseNotesDialogState(
                                         exerciseId = exercise.exerciseId,
@@ -389,6 +404,20 @@ private fun WorkoutInProgressContent(
                                 textAlign = TextAlign.Center
                             )
                             val headerBackground = colors.onSurface.copy(alpha = 0.06f)
+                            Box(
+                                Modifier
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .width(WarmupIndicatorWidth)
+                                    .height(40.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(headerBackground),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    stringResource(R.string.column_set),
+                                    style = headerTextStyle
+                                )
+                            }
                             if (exercise?.logReps == true) Box(
                                 Modifier
                                     .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -460,7 +489,7 @@ private fun WorkoutInProgressContent(
                                 )
                             }
                         }
-                        for (set in setGroup.sets) {
+                        setGroup.sets.forEachIndexed { index, set ->
                             key(set.workoutSetId) {
                                 val dismissState = rememberDismissState()
                                 LaunchedEffect(dismissState.currentValue) {
@@ -477,6 +506,14 @@ private fun WorkoutInProgressContent(
                                         Row(
                                             Modifier.padding(horizontal = 2.dp, vertical = 1.dp)
                                         ) {
+                                            SetTypeBadge(
+                                                isWarmup = set.isWarmup,
+                                                index = index,
+                                                modifier = Modifier
+                                                    .padding(3.dp)
+                                                    .width(WarmupIndicatorWidth),
+                                                onToggle = { pendingSetTypeChange = set to !set.isWarmup }
+                                            )
                                             val textFieldStyle = typography.body1.copy(
                                                 textAlign = TextAlign.Center,
                                                 color = colors.onSurface
@@ -723,5 +760,35 @@ private fun FinishWorkoutDialog(
         title = { Text(stringResource(R.string.dialog_title_finish_workout)) },
         confirmButton = { Button(onClick = finishWorkout) { Text(stringResource(R.string.dialog_confirm_finish_workout)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) } },
+    )
+}
+
+@Composable
+private fun SetTypeChangeDialog(
+    isWarmup: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_title_change_set_type)) },
+        text = {
+            val message = if (isWarmup) {
+                stringResource(R.string.dialog_body_change_set_type_warmup)
+            } else {
+                stringResource(R.string.dialog_body_change_set_type_working)
+            }
+            Text(message)
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.dialog_confirm_change_set_type))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        }
     )
 }

@@ -12,8 +12,6 @@ import com.noahjutz.gymroutines.data.domain.RoutineSet
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroup
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class WorkoutCompletedViewModel(
@@ -31,16 +29,8 @@ class WorkoutCompletedViewModel(
         routineRepository.getSetsInRoutine(routineId)
     }
 
-    val isUpdateRoutineChecked = preferences.data.map {
-        it[AppPrefs.UpdateRoutineAfterWorkout.key] ?: false
-    }
-
     init {
-        viewModelScope.launch {
-            if (isUpdateRoutineChecked.first()) {
-                updateRoutine()
-            }
-        }
+        viewModelScope.launch { updateRoutine() }
     }
 
     fun startWorkout(onCompletion: () -> Unit) {
@@ -50,15 +40,6 @@ class WorkoutCompletedViewModel(
             }
             revertRoutine()
         }.invokeOnCompletion { onCompletion() }
-    }
-
-    fun setUpdateRoutine(updateRoutine: Boolean) {
-        viewModelScope.launch {
-            preferences.edit {
-                it[AppPrefs.UpdateRoutineAfterWorkout.key] = updateRoutine
-            }
-            if (updateRoutine) updateRoutine() else revertRoutine()
-        }
     }
 
     private suspend fun updateRoutine() {
@@ -85,6 +66,7 @@ class WorkoutCompletedViewModel(
                     weight = set.weight,
                     time = set.time,
                     distance = set.distance,
+                    isWarmup = set.isWarmup,
                 )
                 routineRepository.insert(routineSet)
             }

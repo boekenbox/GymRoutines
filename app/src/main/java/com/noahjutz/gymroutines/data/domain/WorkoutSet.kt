@@ -44,6 +44,7 @@ data class WorkoutSet(
     val time: Int? = null,
     val distance: Double? = null,
     val complete: Boolean = false,
+    val isWarmup: Boolean = false,
 
     @PrimaryKey(autoGenerate = true)
     val workoutSetId: Int = 0

@@ -106,6 +106,7 @@ class RoutineEditorViewModel(
                     weight = lastSet?.weight,
                     time = lastSet?.time,
                     distance = lastSet?.distance,
+                    isWarmup = lastSet?.isWarmup ?: false,
                 )
             )
         }
@@ -167,6 +168,12 @@ class RoutineEditorViewModel(
         }
     }
 
+    fun updateWarmup(set: RoutineSet, isWarmup: Boolean) {
+        viewModelScope.launch {
+            routineRepository.update(set.copy(isWarmup = isWarmup))
+        }
+    }
+
     fun startWorkout(onWorkoutStarted: (Long) -> Unit) {
         viewModelScope.launch {
             _routine?.let { _routine ->
@@ -190,7 +197,8 @@ class RoutineEditorViewModel(
                             weight = routineSet.weight,
                             time = routineSet.time,
                             distance = routineSet.distance,
-                            complete = false
+                            complete = false,
+                            isWarmup = routineSet.isWarmup,
                         )
                         workoutRepository.insert(workoutSet)
                     }

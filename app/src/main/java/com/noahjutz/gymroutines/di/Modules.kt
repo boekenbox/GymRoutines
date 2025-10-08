@@ -26,6 +26,7 @@ import com.noahjutz.gymroutines.ui.exercises.picker.ExercisePickerViewModel
 import com.noahjutz.gymroutines.ui.main.MainScreenViewModel
 import com.noahjutz.gymroutines.ui.routines.editor.RoutineEditorViewModel
 import com.noahjutz.gymroutines.ui.routines.list.RoutineListViewModel
+import com.noahjutz.gymroutines.ui.settings.AppSettingsViewModel
 import com.noahjutz.gymroutines.ui.settings.appearance.AppearanceSettingsViewModel
 import com.noahjutz.gymroutines.ui.settings.data.DataSettingsViewModel
 import com.noahjutz.gymroutines.ui.settings.general.GeneralSettingsViewModel
@@ -49,6 +50,7 @@ val koinModule = module {
                 MIGRATION_40_41,
                 MIGRATION_41_42,
                 MIGRATION_42_43,
+                MIGRATION_43_44,
             )
             .build()
     }
@@ -138,6 +140,12 @@ val koinModule = module {
 
     viewModel {
         MainScreenViewModel(
+            preferences = get()
+        )
+    }
+
+    viewModel {
+        AppSettingsViewModel(
             preferences = get()
         )
     }

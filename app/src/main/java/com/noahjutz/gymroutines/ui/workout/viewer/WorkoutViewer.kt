@@ -28,7 +28,9 @@ import androidx.compose.ui.unit.sp
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
+import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.TopBar
+import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.pretty
 import com.noahjutz.gymroutines.util.toStringOrBlank
@@ -126,6 +128,20 @@ fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewer
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
                             )
+                            Box(
+                                Modifier
+                                    .padding(4.dp)
+                                    .width(WarmupIndicatorWidth)
+                                    .height(56.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(colors.primary.copy(alpha = 0.1f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    stringResource(R.string.column_set),
+                                    style = headerTextStyle
+                                )
+                            }
                             if (exercise?.logReps == true) Box(
                                 Modifier
                                     .padding(4.dp)
@@ -193,7 +209,7 @@ fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewer
                                 Icon(Icons.Default.Check, null)
                             }
                         }
-                        for (set in setGroup.sets) {
+                        setGroup.sets.forEachIndexed { index, set ->
                             Row(
                                 Modifier.padding(horizontal = 4.dp)
                             ) {
@@ -226,6 +242,13 @@ fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewer
                                             }
                                         }
                                     }
+                                SetTypeBadge(
+                                    isWarmup = set.isWarmup,
+                                    index = index,
+                                    modifier = Modifier
+                                        .padding(4.dp)
+                                        .width(WarmupIndicatorWidth)
+                                )
                                 if (exercise?.logReps == true) {
                                     TableCell { Text(set.reps.toStringOrBlank()) }
                                 }

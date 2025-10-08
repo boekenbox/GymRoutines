@@ -56,11 +56,6 @@ sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {
         defaultValue = ColorTheme.FollowSystem.name
     )
 
-    data object UpdateRoutineAfterWorkout : AppPrefs<Boolean>(
-        key = booleanPreferencesKey("updateRoutineAfterWorkout"),
-        defaultValue = false
-    )
-
     data object InsightsProgressMetric : AppPrefs<String>(
         key = stringPreferencesKey("insightsProgressMetric"),
         defaultValue = "EstimatedOneRm",
@@ -70,6 +65,11 @@ sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {
         key = intPreferencesKey("insightsSelectedExercise"),
         defaultValue = -1,
     )
+
+    data object BodyWeight : AppPrefs<Float>(
+        key = floatPreferencesKey("bodyWeight"),
+        defaultValue = 80f
+    )
 }
 
 suspend fun DataStore<Preferences>.resetAppSettings() {
@@ -77,8 +77,8 @@ suspend fun DataStore<Preferences>.resetAppSettings() {
         it[AppPrefs.ShowBottomNavLabels.key] = AppPrefs.ShowBottomNavLabels.defaultValue
         it[AppPrefs.IsFirstRun.key] = AppPrefs.IsFirstRun.defaultValue
         it[AppPrefs.AppTheme.key] = AppPrefs.AppTheme.defaultValue
-        it[AppPrefs.UpdateRoutineAfterWorkout.key] = AppPrefs.UpdateRoutineAfterWorkout.defaultValue
         it[AppPrefs.InsightsProgressMetric.key] = AppPrefs.InsightsProgressMetric.defaultValue
         it[AppPrefs.InsightsSelectedExercise.key] = AppPrefs.InsightsSelectedExercise.defaultValue
+        it[AppPrefs.BodyWeight.key] = AppPrefs.BodyWeight.defaultValue
     }
 }

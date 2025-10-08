@@ -12,9 +12,7 @@ class MainScreenViewModel(
     preferences: DataStore<Preferences>
 ) : ViewModel() {
     val colorTheme = preferences.data.map { preferences ->
-        preferences[AppPrefs.AppTheme.key]?.let { key ->
-            ColorTheme.valueOf(key)
-        } ?: ColorTheme.FollowSystem
+        ColorTheme.fromName(preferences[AppPrefs.AppTheme.key])
     }
 
     val currentWorkoutId: Flow<Int> = preferences.data.map { preferences ->

@@ -14,9 +14,7 @@ class AppearanceSettingsViewModel(
     private val preferences: DataStore<Preferences>
 ) : ViewModel() {
     val appTheme = preferences.data.map {
-        it[AppPrefs.AppTheme.key]?.let { colorThemeString ->
-            ColorTheme.valueOf(colorThemeString)
-        } ?: ColorTheme.FollowSystem
+        ColorTheme.fromName(it[AppPrefs.AppTheme.key])
     }
 
     fun setAppTheme(theme: ColorTheme) {

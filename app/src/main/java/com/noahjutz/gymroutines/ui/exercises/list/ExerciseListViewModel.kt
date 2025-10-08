@@ -22,6 +22,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.noahjutz.gymroutines.data.ExerciseRepository
 import com.noahjutz.gymroutines.data.domain.Exercise
+import com.noahjutz.gymroutines.data.library.ExerciseLibraryRepository
+import com.noahjutz.gymroutines.data.library.LibraryExercise
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,8 +35,14 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+data class ExerciseListItem(
+    val exercise: Exercise,
+    val libraryExercise: LibraryExercise?,
+)
+
 class ExerciseListViewModel(
     private val repository: ExerciseRepository,
+    private val libraryRepository: ExerciseLibraryRepository,
 ) : ViewModel() {
     private val _nameFilter = MutableStateFlow("")
     val nameFilter = _nameFilter.asStateFlow()
@@ -44,16 +52,30 @@ class ExerciseListViewModel(
     }
 
     val exercises = repository.exercises
-        .combine(_nameFilter) { exercises, nameFilter ->
+        .combine(libraryRepository.exercises) { exercises, library ->
+            exercises.filterNot(Exercise::hidden) to library.associateBy { it.id }
+        }
+        .combine(_nameFilter) { (exercises, libraryIndex), nameFilter ->
             val locale = Locale.getDefault()
             val normalizedFilter = nameFilter.trim().lowercase(locale)
-            val visibleExercises = exercises.filterNot(Exercise::hidden)
+
+            val items = exercises.map { exercise ->
+                ExerciseListItem(
+                    exercise = exercise,
+                    libraryExercise = exercise.libraryExerciseId?.let(libraryIndex::get)
+                )
+            }
 
             if (normalizedFilter.isEmpty()) {
-                visibleExercises
+                items
             } else {
-                visibleExercises.filter { exercise ->
-                    exercise.name.lowercase(locale).contains(normalizedFilter)
+                items.filter { item ->
+                    item.exercise.name.lowercase(locale).contains(normalizedFilter) ||
+                        item.libraryExercise?.let { libraryExercise ->
+                            libraryExercise.bodyParts.any { it.contains(normalizedFilter, locale) } ||
+                                libraryExercise.targetMuscles.any { it.contains(normalizedFilter, locale) } ||
+                                libraryExercise.equipments.any { it.contains(normalizedFilter, locale) }
+                        } == true
                 }
             }
         }
@@ -65,5 +87,9 @@ class ExerciseListViewModel(
         viewModelScope.launch {
             repository.update(exercise.copy(hidden = true))
         }
+    }
+
+    private fun String.contains(other: String, locale: Locale): Boolean {
+        return lowercase(locale).contains(other)
     }
 }

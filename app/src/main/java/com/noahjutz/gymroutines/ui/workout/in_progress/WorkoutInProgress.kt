@@ -72,6 +72,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.rememberDismissState
 import androidx.compose.runtime.*
@@ -117,6 +118,7 @@ fun WorkoutInProgress(
     popBackStack: () -> Unit,
     workoutId: Int,
     exerciseIdsToAdd: List<Int>,
+    navToExerciseDetail: (String) -> Unit,
     viewModel: WorkoutInProgressViewModel = getViewModel { parametersOf(workoutId) },
 ) {
     LaunchedEffect(exerciseIdsToAdd) {
@@ -148,6 +150,7 @@ fun WorkoutInProgress(
                         popBackStack = popBackStack,
                         navToExercisePicker = navToExercisePicker,
                         navToWorkoutCompleted = navToWorkoutCompleted,
+                        navToExerciseDetail = navToExerciseDetail,
                     )
                 }
             }
@@ -172,6 +175,7 @@ private fun WorkoutInProgressContent(
     popBackStack: () -> Unit,
     navToExercisePicker: () -> Unit,
     navToWorkoutCompleted: (Int, Int) -> Unit,
+    navToExerciseDetail: (String) -> Unit,
 ) {
     var showFinishWorkoutDialog by remember { mutableStateOf(false) }
     if (showFinishWorkoutDialog) FinishWorkoutDialog(
@@ -320,6 +324,16 @@ private fun WorkoutInProgressContent(
                                 ),
                                 modifier = Modifier.weight(1f)
                             )
+
+                            if (exercise?.libraryExerciseId != null) {
+                                IconButton(onClick = { navToExerciseDetail(exercise.libraryExerciseId!!) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = stringResource(R.string.btn_exercise_info),
+                                        tint = contentColorFor(headerColor)
+                                    )
+                                }
+                            }
 
                             Box {
                                 var expanded by remember { mutableStateOf(false) }

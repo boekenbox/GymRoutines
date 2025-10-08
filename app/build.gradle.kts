@@ -136,6 +136,9 @@ dependencies {
     implementation("com.google.accompanist:accompanist-navigation-animation:0.30.1")
     implementation("com.google.accompanist:accompanist-placeholder-material:0.30.1")
 
+    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil-gif:2.4.0")
+
     androidTestImplementation("androidx.test:core:1.5.0")
     androidTestImplementation("androidx.test:core-ktx:1.5.0")
 

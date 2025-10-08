@@ -28,6 +28,7 @@ import androidx.compose.material.*
 import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -47,6 +48,7 @@ fun ExercisePickerSheet(
     viewModel: ExercisePickerViewModel = getViewModel(),
     onExercisesSelected: (List<Int>) -> Unit,
     navToExerciseEditor: () -> Unit,
+    navToExerciseLibrary: () -> Unit,
 ) {
     val allExercises by viewModel.allExercises.collectAsState(emptyList())
     val selectedExerciseIds by viewModel.selectedExerciseIds.collectAsState(initial = emptyList())
@@ -103,6 +105,18 @@ fun ExercisePickerSheet(
                             color = colors.primary
                         )
                     },
+                )
+            }
+            item {
+                ListItem(
+                    modifier = Modifier.clickable(onClick = navToExerciseLibrary),
+                    icon = { Icon(Icons.Default.Book, null, tint = colors.primary) },
+                    text = {
+                        Text(
+                            stringResource(R.string.btn_browse_library),
+                            color = colors.primary
+                        )
+                    }
                 )
             }
         }

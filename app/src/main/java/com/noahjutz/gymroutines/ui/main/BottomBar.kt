@@ -59,10 +59,18 @@ fun BottomBar(
 
     BottomNavigation {
         for (item in bottomNavItems) {
+            val navigateRoute = when (item) {
+                BottomNavItem.Exercises -> "${Screen.exerciseList.name}?startLibrary=false"
+                else -> item.route
+            }
+            val isSelected = when (item) {
+                BottomNavItem.Exercises -> currentRoute?.startsWith(Screen.exerciseList.name) == true
+                else -> item.route == currentRoute
+            }
             BottomNavigationItem(
                 icon = { Icon(item.icon, null) },
                 onClick = {
-                    navController.navigate(item.route) {
+                    navController.navigate(navigateRoute) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
@@ -71,7 +79,7 @@ fun BottomBar(
                     }
                 },
                 label = (@Composable { Text(stringResource(item.name)) }).takeIf { showLabels },
-                selected = item.route == currentRoute,
+                selected = isSelected,
             )
         }
     }

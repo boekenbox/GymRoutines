@@ -65,7 +65,6 @@ class ExerciseEditorViewModel(
             _originalExercise.value = repository.getExercise(exerciseId)
 
             _originalExercise.value?.let {
-                _currentExercise.value = it
                 _name.value = it.name
                 _notes.value = it.notes
                 _logReps.value = it.logReps
@@ -141,7 +140,7 @@ class ExerciseEditorViewModel(
 
     fun save(onComplete: () -> Unit) {
         viewModelScope.launch {
-            val exercise = _currentExercise.value?.copy(
+            val exercise = Exercise(
                 name = name.value,
                 notes = notes.value,
                 logReps = logReps.value,
@@ -149,8 +148,7 @@ class ExerciseEditorViewModel(
                 logTime = logTime.value,
                 logDistance = logDistance.value,
                 hidden = false,
-            ) ?: return@launch
-
+            )
             if (exerciseId < 0) {
                 repository.insert(exercise.copy(exerciseId = 0))
             } else {

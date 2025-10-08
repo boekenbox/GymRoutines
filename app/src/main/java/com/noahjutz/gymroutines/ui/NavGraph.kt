@@ -40,7 +40,6 @@ import com.google.accompanist.navigation.material.ModalBottomSheetLayout
 import com.google.accompanist.navigation.material.bottomSheet
 import com.noahjutz.gymroutines.ui.exercises.editor.ExerciseEditor
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseList
-import com.noahjutz.gymroutines.ui.exercises.library.ExerciseDetailSheet
 import com.noahjutz.gymroutines.ui.exercises.picker.ExercisePickerSheet
 import com.noahjutz.gymroutines.ui.routines.editor.RoutineEditor
 import com.noahjutz.gymroutines.ui.routines.list.RoutineList
@@ -65,7 +64,6 @@ enum class Screen {
     exerciseList,
     exerciseEditor,
     exercisePicker,
-    exerciseDetail,
     workoutInProgress,
     workoutViewer,
     prHistory,
@@ -112,7 +110,6 @@ fun NavGraph(
                 WorkoutViewer(
                     workoutId = workoutId,
                     popBackStack = { navController.popBackStack() },
-                    navToExerciseDetail = { libraryId -> navController.navigate("${Screen.exerciseDetail.name}/$libraryId") }
                 )
             }
             composable(Screen.prHistory.name) {
@@ -150,21 +147,10 @@ fun NavGraph(
                     exerciseIdsToAdd = exerciseIdsToAdd ?: emptyList()
                 )
             }
-            composable(
-                route = "${Screen.exerciseList.name}?startLibrary={startLibrary}",
-                arguments = listOf(
-                    navArgument("startLibrary") {
-                        type = NavType.BoolType
-                        defaultValue = false
-                    }
-                )
-            ) { backStackEntry ->
-                val startWithLibrary = backStackEntry.arguments?.getBoolean("startLibrary") ?: false
+            composable(Screen.exerciseList.name) {
                 ExerciseList(
                     navToExerciseEditor = { exerciseId -> navController.navigate("${Screen.exerciseEditor}?exerciseId=$exerciseId") },
-                    navToSettings = { navController.navigate(Screen.settings.name) },
-                    navToExerciseDetail = { libraryId -> navController.navigate("${Screen.exerciseDetail.name}/$libraryId") },
-                    startWithLibrary = startWithLibrary
+                    navToSettings = { navController.navigate(Screen.settings.name) }
                 )
             }
             composable(
@@ -198,7 +184,6 @@ fun NavGraph(
                     workoutId = workoutId,
                     exerciseIdsToAdd = exerciseIdsToAdd ?: emptyList(),
                     navToExercisePicker = { navController.navigate(Screen.exercisePicker.name) },
-                    navToExerciseDetail = { libraryId -> navController.navigate("${Screen.exerciseDetail.name}/$libraryId") },
                     popBackStack = { navController.popBackStack() },
                     navToWorkoutCompleted = { workoutId, routineId ->
                         navController.navigate("${Screen.workoutCompleted}/$workoutId/$routineId") {
@@ -243,23 +228,7 @@ fun NavGraph(
                         navController.popBackStack()
                     },
                     navToExerciseEditor = {
-                        navController.navigate("${Screen.exerciseEditor}?exerciseId=-1")
-                    },
-                    navToExerciseLibrary = {
-                        navController.navigate("${Screen.exerciseList.name}?startLibrary=true")
-                    }
-                )
-            }
-            bottomSheet(
-                route = "${Screen.exerciseDetail.name}/{libraryId}",
-                arguments = listOf(navArgument("libraryId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val libraryId = backStackEntry.arguments!!.getString("libraryId") ?: return@bottomSheet
-                ExerciseDetailSheet(
-                    libraryId = libraryId,
-                    onExerciseImported = { exerciseId ->
-                        navController.previousBackStackEntry?.savedStateHandle?.set("exerciseIdsToAdd", listOf(exerciseId))
-                        navController.popBackStack()
+                        navController.navigate(Screen.exerciseEditor.name)
                     }
                 )
             }

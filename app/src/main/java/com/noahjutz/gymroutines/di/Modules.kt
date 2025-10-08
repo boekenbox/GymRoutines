@@ -20,11 +20,9 @@ package com.noahjutz.gymroutines.di
 
 import androidx.room.Room
 import com.noahjutz.gymroutines.data.*
-import com.noahjutz.gymroutines.data.library.ExerciseLibraryRepository
 import com.noahjutz.gymroutines.ui.exercises.editor.ExerciseEditorViewModel
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListViewModel
 import com.noahjutz.gymroutines.ui.exercises.picker.ExercisePickerViewModel
-import com.noahjutz.gymroutines.ui.exercises.library.ExerciseLibraryViewModel
 import com.noahjutz.gymroutines.ui.main.MainScreenViewModel
 import com.noahjutz.gymroutines.ui.routines.editor.RoutineEditorViewModel
 import com.noahjutz.gymroutines.ui.routines.list.RoutineListViewModel
@@ -40,13 +38,8 @@ import org.koin.android.ext.koin.androidApplication
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
-import kotlinx.serialization.json.Json
 
 val koinModule = module {
-    single {
-        Json { ignoreUnknownKeys = true }
-    }
-
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "workout_routines_database")
             .addMigrations(
@@ -59,7 +52,6 @@ val koinModule = module {
                 MIGRATION_42_43,
                 MIGRATION_43_44,
                 MIGRATION_44_45,
-                MIGRATION_45_46,
             )
             .build()
     }
@@ -70,10 +62,6 @@ val koinModule = module {
 
     factory {
         get<AppDatabase>().exerciseDao
-    }
-
-    single {
-        ExerciseLibraryRepository(androidContext(), get())
     }
 
     factory {
@@ -101,11 +89,7 @@ val koinModule = module {
     }
 
     viewModel {
-        ExerciseListViewModel(get(), get())
-    }
-
-    viewModel {
-        ExerciseLibraryViewModel(get(), get())
+        ExerciseListViewModel(get())
     }
 
     viewModel {

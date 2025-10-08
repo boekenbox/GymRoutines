@@ -32,10 +32,6 @@ data class Exercise(
     var logTime: Boolean = false,
     var logDistance: Boolean = false,
     var hidden: Boolean = false,
-    @ColumnInfo(defaultValue = "1")
-    var isCustom: Boolean = true,
-    @ColumnInfo(defaultValue = "NULL")
-    var libraryExerciseId: String? = null,
 
     @PrimaryKey(autoGenerate = true)
     val exerciseId: Int = 0

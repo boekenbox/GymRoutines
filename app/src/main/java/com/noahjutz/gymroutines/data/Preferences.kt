@@ -32,15 +32,7 @@ enum class ColorTheme(
 ) {
     FollowSystem(R.string.app_theme_follow_system),
     White(R.string.app_theme_light),
-    Black(R.string.app_theme_dark);
-
-    companion object {
-        fun fromName(name: String?): ColorTheme {
-            if (name.isNullOrBlank()) return FollowSystem
-
-            return entries.firstOrNull { it.name == name } ?: FollowSystem
-        }
-    }
+    Black(R.string.app_theme_dark)
 }
 
 sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {

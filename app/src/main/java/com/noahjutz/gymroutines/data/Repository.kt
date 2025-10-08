@@ -22,6 +22,8 @@ import com.noahjutz.gymroutines.data.dao.ExerciseDao
 import com.noahjutz.gymroutines.data.dao.RoutineDao
 import com.noahjutz.gymroutines.data.dao.WorkoutDao
 import com.noahjutz.gymroutines.data.domain.*
+import com.noahjutz.gymroutines.data.library.LibraryExercise
+import com.noahjutz.gymroutines.util.toDisplayCase
 import kotlinx.coroutines.flow.Flow
 
 class ExerciseRepository(private val exerciseDao: ExerciseDao) {
@@ -41,6 +43,31 @@ class ExerciseRepository(private val exerciseDao: ExerciseDao) {
 
     suspend fun getExercise(id: Int): Exercise? {
         return exerciseDao.getExercise(id)
+    }
+
+    suspend fun getExerciseByLibraryId(libraryId: String): Exercise? {
+        return exerciseDao.getExerciseByLibraryId(libraryId)
+    }
+
+    suspend fun importLibraryExercise(libraryExercise: LibraryExercise): Exercise {
+        val existing = getExerciseByLibraryId(libraryExercise.id)
+        if (existing != null) return existing
+
+        val normalizedName = libraryExercise.name.toDisplayCase()
+        val exercise = Exercise(
+            name = normalizedName,
+            notes = "",
+            logReps = true,
+            logWeight = false,
+            logTime = false,
+            logDistance = false,
+            hidden = false,
+            isCustom = false,
+            libraryExerciseId = libraryExercise.id,
+        )
+
+        val id = insert(exercise).toInt()
+        return exercise.copy(exerciseId = id)
     }
 }
 

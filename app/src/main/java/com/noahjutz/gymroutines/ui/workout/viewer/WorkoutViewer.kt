@@ -13,6 +13,7 @@ import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,6 +45,7 @@ fun WorkoutViewer(
     workoutId: Int,
     viewModel: WorkoutViewerViewModel = getViewModel { parametersOf(workoutId) },
     popBackStack: () -> Unit,
+    navToExerciseDetail: (String) -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -63,7 +65,7 @@ fun WorkoutViewer(
                 }
             } else {
                 workout?.let { workout ->
-                    WorkoutViewerContent(workout, viewModel)
+                    WorkoutViewerContent(workout, viewModel, navToExerciseDetail)
                 }
             }
         }
@@ -73,7 +75,11 @@ fun WorkoutViewer(
 @OptIn(ExperimentalFoundationApi::class)
 @ExperimentalTime
 @Composable
-fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewerViewModel) {
+fun WorkoutViewerContent(
+    workout: WorkoutWithSetGroups,
+    viewModel: WorkoutViewerViewModel,
+    navToExerciseDetail: (String) -> Unit,
+) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
         item {
             val routineName by viewModel.routineName.collectAsState(initial = "")
@@ -118,6 +124,16 @@ fun WorkoutViewerContent(workout: WorkoutWithSetGroups, viewModel: WorkoutViewer
                                     .padding(24.dp)
                                     .weight(1f)
                             )
+                            val libraryId = exercise?.libraryExerciseId
+                            if (libraryId != null) {
+                                IconButton(onClick = { navToExerciseDetail(libraryId) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = stringResource(R.string.btn_exercise_info),
+                                        tint = colors.onPrimary
+                                    )
+                                }
+                            }
                         }
                     }
                     Column(Modifier.padding(vertical = 16.dp)) {

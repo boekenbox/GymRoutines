@@ -48,8 +48,10 @@ import com.noahjutz.gymroutines.data.domain.Routine
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroupWithSets
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
+import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
+import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.util.RegexPatterns
 import com.noahjutz.gymroutines.util.formatSimple
@@ -328,16 +330,16 @@ private fun RoutineEditorContent(
                         }
                     }
                     val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
-                    if (trimmedNotes.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .fillMaxWidth(),
+                        if (trimmedNotes.isNotEmpty()) {
+                            Surface(
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    .fillMaxWidth(),
                             color = colors.primary.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -372,7 +374,7 @@ private fun RoutineEditorContent(
                     } else {
                         TextButton(
                             modifier = Modifier
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
                             onClick = {
                                 notesEditorState = ExerciseNotesDialogState(
                                     exerciseId = exercise.exerciseId,
@@ -399,6 +401,16 @@ private fun RoutineEditorContent(
                                 fontWeight = FontWeight.Medium,
                                 textAlign = TextAlign.Center
                             )
+                            Surface(
+                                Modifier
+                                    .padding(horizontal = 4.dp, vertical = 4.dp)
+                                    .width(WarmupIndicatorWidth),
+                            ) {
+                                Text(
+                                    stringResource(R.string.column_set),
+                                    style = headerTextStyle
+                                )
+                            }
                             if (exercise.logReps) Surface(
                                 Modifier
                                     .padding(horizontal = 4.dp, vertical = 4.dp)
@@ -440,7 +452,7 @@ private fun RoutineEditorContent(
                                 )
                             }
                         }
-                        for (set in setGroup.sets) {
+                        setGroup.sets.forEachIndexed { index, set ->
                             key(set.routineSetId) {
                                 val dismissState = rememberDismissState()
                                 val scope = rememberCoroutineScope()
@@ -452,6 +464,14 @@ private fun RoutineEditorContent(
                                         Row(
                                             Modifier.padding(horizontal = 2.dp)
                                         ) {
+                                            SetTypeBadge(
+                                                isWarmup = set.isWarmup,
+                                                index = index,
+                                                modifier = Modifier
+                                                    .padding(3.dp)
+                                                    .width(WarmupIndicatorWidth),
+                                                onToggle = { viewModel.updateWarmup(set, !set.isWarmup) }
+                                            )
                                             val textFieldStyle = typography.body1.copy(
                                                 textAlign = TextAlign.Center,
                                                 color = colors.onSurface

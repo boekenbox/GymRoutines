@@ -94,6 +94,7 @@ class WorkoutInProgressViewModel(
                     weight = lastSet?.weight,
                     time = lastSet?.time,
                     distance = lastSet?.distance,
+                    isWarmup = lastSet?.isWarmup ?: false,
                 )
             )
         }
@@ -152,6 +153,12 @@ class WorkoutInProgressViewModel(
     fun updateDistance(set: WorkoutSet, distance: Double?) {
         viewModelScope.launch {
             workoutRepository.update(set.copy(distance = distance))
+        }
+    }
+
+    fun updateWarmup(set: WorkoutSet, isWarmup: Boolean) {
+        viewModelScope.launch {
+            workoutRepository.update(set.copy(isWarmup = isWarmup))
         }
     }
 

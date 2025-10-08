@@ -54,7 +54,7 @@ class WorkoutInsightsViewModelTest {
     }
 
     @Test
-    fun zeroAndNegativeWeightsAreIgnored() {
+    fun zeroWeightsAreIgnoredAndNegativeWeightsIncludeBodyWeight() {
         val baseInstant = Instant.parse("2023-02-01T08:00:00Z")
         val sessions = listOf(
             createSession(
@@ -64,6 +64,7 @@ class WorkoutInsightsViewModelTest {
                 exerciseName = "Bench Press",
                 weight = 0.0,
                 reps = 10,
+                bodyWeight = 82.5,
             ),
             createSession(
                 workoutId = 11,
@@ -72,14 +73,19 @@ class WorkoutInsightsViewModelTest {
                 exerciseName = "Bench Press",
                 weight = -5.0,
                 reps = 8,
+                bodyWeight = 82.5,
             ),
         )
 
         val result = computePersonalRecords(sessions)
 
-        assertTrue(result.events.isEmpty())
         assertTrue(result.eventsByWorkout[10].isNullOrEmpty())
-        assertTrue(result.eventsByWorkout[11].isNullOrEmpty())
+        val workout11Events = result.eventsByWorkout[11]
+        assertNotNull(workout11Events)
+        val loadPr = workout11Events.firstOrNull { it.type == PrType.Load }
+        assertNotNull(loadPr)
+        assertEquals(77.5, loadPr.value, 1e-6)
+        assertTrue(result.events.any { it.type == PrType.Load && it.value == 77.5 })
     }
 
     @Test
@@ -123,10 +129,11 @@ class WorkoutInsightsViewModelTest {
 
     @Test
     fun normalizeWeightDropsInvalidValuesAndRounds() {
-        assertNull(normalizeWeight(null))
-        assertNull(normalizeWeight(Double.NaN))
-        assertNull(normalizeWeight(-1.0))
-        assertEquals(20.12, normalizeWeight(20.123) ?: error("weight should normalize"), 1e-6)
+        assertNull(normalizeWeight(null, 80.0))
+        assertNull(normalizeWeight(Double.NaN, 80.0))
+        assertNull(normalizeWeight(-120.0, 80.0))
+        assertEquals(75.0, normalizeWeight(-5.0, 80.0) ?: error("warmup should normalize"), 1e-6)
+        assertEquals(20.12, normalizeWeight(20.123, 80.0) ?: error("weight should normalize"), 1e-6)
     }
 
     private fun createSession(
@@ -136,8 +143,9 @@ class WorkoutInsightsViewModelTest {
         exerciseName: String,
         weight: Double?,
         reps: Int?,
+        bodyWeight: Double = 80.0,
     ): SessionComputation {
-        val normalizedWeight = normalizeWeight(weight)
+        val normalizedWeight = normalizeWeight(weight, bodyWeight)
         val workout = Workout(
             routineId = 1,
             startTime = Date.from(instant),

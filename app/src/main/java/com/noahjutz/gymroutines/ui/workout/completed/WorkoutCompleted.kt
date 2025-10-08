@@ -1,15 +1,12 @@
 package com.noahjutz.gymroutines.ui.workout.completed
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -50,24 +47,11 @@ fun WorkoutCompleted(
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(stringResource(R.string.title_workout_completed), style = typography.h2)
                 Text(stringResource(R.string.body_workout_completed), style = typography.h5)
-            }
-            val isUpdateRoutineChecked by viewModel.isUpdateRoutineChecked.collectAsState(initial = false)
-            Row(
-                Modifier
-                    .toggleable(
-                        value = isUpdateRoutineChecked,
-                        onValueChange = viewModel::setUpdateRoutine
-                    )
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Checkbox(
-                    checked = isUpdateRoutineChecked,
-                    onCheckedChange = null
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.body_workout_completed_saved),
+                    style = typography.body1,
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.checkbox_update_routine))
             }
         }
         Spacer(Modifier.weight(1f))

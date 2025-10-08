@@ -93,7 +93,7 @@
     <string name="btn_continue_workout">Continue Workout</string>
     <string name="title_workout_completed">Nice Work.</string>
     <string name="body_workout_completed">You\'ve completed your workout.</string>
-    <string name="checkbox_update_routine">Update Routine</string>
+    <string name="body_workout_completed_saved">Your routine was saved automatically. We\'ll load these sets next time.</string>
     <string name="btn_close">Close</string>
     <string name="screen_perform_workout">Workout</string>
     <string name="drag_handle">Rearrange</string>
@@ -102,6 +102,10 @@
     <string name="dialog_title_discard_workout">Discard Workout?</string>
     <string name="dialog_title_finish_workout">Finish Workout?</string>
     <string name="dialog_confirm_finish_workout">Finish</string>
+    <string name="dialog_title_change_set_type">Change set type?</string>
+    <string name="dialog_body_change_set_type_warmup">Mark this set as a warm-up?</string>
+    <string name="dialog_body_change_set_type_working">Mark this set as a working set?</string>
+    <string name="dialog_confirm_change_set_type">Change</string>
     <string name="chart_workout_duration">Workout duration</string>
     <string name="chart_insufficient_data">Not enough data.</string>
     <string name="screen_view_workout">View Workout</string>
@@ -150,4 +154,14 @@
     <string name="insights_metric_avg_load">Avg load/rep</string>
     <string name="insights_unit_weight">kg</string>
     <string name="insights_unit_reps">reps</string>
+    <string name="pref_body_weight">Body weight</string>
+    <string name="pref_body_weight_summary">%1$.1f %2$s</string>
+    <string name="dialog_title_body_weight">Set body weight</string>
+    <string name="dialog_body_body_weight">Used for assisted and bodyweight exercises (%1$s).</string>
+    <string name="dialog_confirm_body_weight">Save</string>
+    <string name="error_body_weight_invalid">Enter a value greater than 0.</string>
+    <string name="column_set">Set</string>
+    <string name="set_type_warmup_short">W</string>
+    <string name="set_type_warmup">Warm-up set</string>
+    <string name="set_type_working">Set %1$d (working)</string>
 </resources>

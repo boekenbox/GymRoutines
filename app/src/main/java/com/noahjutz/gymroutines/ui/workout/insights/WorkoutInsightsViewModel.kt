@@ -54,39 +54,68 @@ class WorkoutInsightsViewModel(
         if (id <= 0) null else id
     }
 
+    private val bodyWeightFlow = preferences.data.map { prefs ->
+        prefs[AppPrefs.BodyWeight.key] ?: AppPrefs.BodyWeight.defaultValue
+    }
+
+    private val currentWorkoutFlow = preferences.data.map { prefs ->
+        prefs[AppPrefs.CurrentWorkout.key] ?: AppPrefs.CurrentWorkout.defaultValue
+    }
+
     private val mutableUiState = MutableStateFlow(WorkoutInsightsUiState())
     val uiState: StateFlow<WorkoutInsightsUiState> = mutableUiState.asStateFlow()
 
     init {
         viewModelScope.launch {
             combine(
-                workoutRepository.workoutsWithSetGroups,
-                routineRepository.routines,
-                exerciseRepository.exercises,
-                progressMetricFlow,
-                selectedExerciseFlow,
-            ) { workouts, routines, exercises, progressMetric, selectedExerciseId ->
-                val routineNames = routines.associateBy({ it.routineId }, { it.name })
-                val exerciseNames = exercises.associateBy({ it.exerciseId }, { it.name })
-                val normalizedNames = exercises.associateBy({ it.exerciseId }, { it.name.trim().lowercase(Locale.getDefault()) })
+                combine(
+                    workoutRepository.workoutsWithSetGroups,
+                    routineRepository.routines,
+                    exerciseRepository.exercises,
+                    progressMetricFlow,
+                    selectedExerciseFlow,
+                ) { workouts, routines, exercises, progressMetric, selectedExerciseId ->
+                    InsightsSourceData(
+                        workouts = workouts,
+                        routines = routines,
+                        exercises = exercises,
+                        progressMetric = progressMetric,
+                        selectedExerciseId = selectedExerciseId,
+                    )
+                },
+                bodyWeightFlow,
+                currentWorkoutFlow,
+            ) { source, bodyWeight, currentWorkoutId ->
+                val routineNames = source.routines.associateBy({ it.routineId }, { it.name })
+                val exerciseNames = source.exercises.associateBy({ it.exerciseId }, { it.name })
+                val normalizedNames = source.exercises.associateBy({ it.exerciseId }, { it.name.trim().lowercase(Locale.getDefault()) })
 
-                val sessions = workouts
+                val activeWorkoutId = currentWorkoutId.takeIf { it > 0 }
+                val effectiveBodyWeight = max(bodyWeight.toDouble(), 0.0)
+                val sessions = source.workouts
+                    .filter { activeWorkoutId == null || it.workout.workoutId != activeWorkoutId }
                     .sortedBy { it.workout.startTime }
                     .map { session ->
-                        buildSession(session, routineNames, exerciseNames, normalizedNames)
+                        buildSession(
+                            session = session,
+                            routineNames = routineNames,
+                            exerciseNames = exerciseNames,
+                            normalizedNames = normalizedNames,
+                            bodyWeight = effectiveBodyWeight
+                        )
                     }
 
                 val exerciseProgressData = buildExerciseProgress(sessions)
                 val selectedExercise = when {
                     exerciseProgressData.exercises.isEmpty() -> null
-                    selectedExerciseId != null && exerciseProgressData.exercises.any { it.exerciseId == selectedExerciseId } ->
-                        selectedExerciseId
+                    source.selectedExerciseId != null && exerciseProgressData.exercises.any { it.exerciseId == source.selectedExerciseId } ->
+                        source.selectedExerciseId
                     else -> exerciseProgressData.exercises.firstOrNull()?.exerciseId
                 }
 
                 val exerciseProgress = exerciseProgressData.copy(
                     selectedExerciseId = selectedExercise,
-                    metric = progressMetric,
+                    metric = source.progressMetric,
                 )
 
                 val prComputation = computePersonalRecords(sessions)
@@ -317,6 +346,7 @@ class WorkoutInsightsViewModel(
         routineNames: Map<Int, String>,
         exerciseNames: Map<Int, String>,
         normalizedNames: Map<Int, String>,
+        bodyWeight: Double,
     ): SessionComputation {
         val routineName = routineNames[session.workout.routineId] ?: ""
         val startInstant = session.workout.startTime.toInstant()
@@ -333,7 +363,7 @@ class WorkoutInsightsViewModel(
             val exerciseName = exerciseNames[exerciseId] ?: "Exercise #$exerciseId"
             val normalized = normalizedNames[exerciseId] ?: exerciseName.trim().lowercase(Locale.getDefault())
             group.sets.forEach { set ->
-                val normalizedWeight = normalizeWeight(set.weight)
+                val normalizedWeight = normalizeWeight(set.weight, bodyWeight)
                 sets += WorkoutSetSample(
                     exerciseId = exerciseId,
                     exerciseName = exerciseName,
@@ -381,6 +411,14 @@ class WorkoutInsightsViewModel(
     }
 
 }
+
+private data class InsightsSourceData(
+    val workouts: List<WorkoutWithSetGroups>,
+    val routines: List<com.noahjutz.gymroutines.data.domain.Routine>,
+    val exercises: List<com.noahjutz.gymroutines.data.domain.Exercise>,
+    val progressMetric: ExerciseProgressMetric,
+    val selectedExerciseId: Int?,
+)
 
 internal const val WEIGHT_EPSILON = 1e-3
 private const val WEIGHT_ROUNDING_DECIMALS = 2
@@ -596,10 +634,11 @@ internal fun computePersonalRecords(
     return PrComputationResult(sortedEvents, sortedPerSession, currentByType)
 }
 
-internal fun normalizeWeight(raw: Double?): Double? {
+internal fun normalizeWeight(raw: Double?, bodyWeight: Double): Double? {
     val weight = raw ?: return null
-    if (!weight.isFinite() || weight <= 0.0) return null
-    val rounded = roundToDecimals(weight, WEIGHT_ROUNDING_DECIMALS)
+    if (!weight.isFinite()) return null
+    val adjusted = if (weight < 0) bodyWeight + weight else weight
+    val rounded = roundToDecimals(adjusted, WEIGHT_ROUNDING_DECIMALS)
     return if (rounded <= 0.0) null else rounded
 }
 

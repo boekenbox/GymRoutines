@@ -56,6 +56,7 @@ import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.util.RegexPatterns
+import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.toStringOrBlank
 import kotlin.math.max
@@ -125,6 +126,195 @@ fun RoutineEditor(
                 }
             }
         }
+    }
+}
+
+private const val MAX_REST_TIMER_SECONDS = 99 * 60 + 59
+private const val REST_TIMER_STEP_SECONDS = 15
+
+@Composable
+private fun RestTimerDialog(
+    initialWarmupSeconds: Int,
+    initialWorkingSeconds: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit,
+    onRemove: () -> Unit,
+) {
+    var warmupSeconds by rememberSaveable(initialWarmupSeconds) {
+        mutableStateOf(initialWarmupSeconds.coerceIn(0, MAX_REST_TIMER_SECONDS))
+    }
+    var workingSeconds by rememberSaveable(initialWorkingSeconds) {
+        mutableStateOf(
+            initialWorkingSeconds.takeIf { it > 0 }
+                ?.coerceIn(0, MAX_REST_TIMER_SECONDS)
+                ?: 120
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_title_rest_timer)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.dialog_body_rest_timer))
+                Spacer(Modifier.height(16.dp))
+                RestTimerDurationPicker(
+                    label = stringResource(R.string.rest_timer_warmup_field),
+                    seconds = warmupSeconds,
+                    onSecondsChange = { warmupSeconds = it.coerceIn(0, MAX_REST_TIMER_SECONDS) },
+                    showNonePlaceholder = true,
+                )
+                Spacer(Modifier.height(12.dp))
+                RestTimerDurationPicker(
+                    label = stringResource(R.string.rest_timer_working_field),
+                    seconds = workingSeconds,
+                    onSecondsChange = { workingSeconds = it.coerceIn(0, MAX_REST_TIMER_SECONDS) },
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.rest_timer_hint_none),
+                    style = typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                )
+                if (initialWarmupSeconds > 0 || initialWorkingSeconds > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(onClick = onRemove) {
+                        Text(stringResource(R.string.dialog_remove_rest_timer))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(warmupSeconds, workingSeconds) }
+            ) {
+                Text(stringResource(R.string.dialog_confirm_rest_timer))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun RestTimerDurationPicker(
+    label: String,
+    seconds: Int,
+    onSecondsChange: (Int) -> Unit,
+    showNonePlaceholder: Boolean = false,
+) {
+    val colors = MaterialTheme.colors
+    Column {
+        Text(
+            text = label,
+            style = typography.subtitle2,
+            color = colors.onSurface
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    onSecondsChange((seconds - REST_TIMER_STEP_SECONDS).coerceAtLeast(0))
+                },
+                enabled = seconds > 0
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = stringResource(R.string.rest_timer_decrease)
+                )
+            }
+            Surface(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .defaultMinSize(minWidth = 96.dp)
+                    .heightIn(min = 44.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = colors.onSurface.copy(alpha = 0.05f)
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val labelText = when {
+                        seconds > 0 -> formatRestDuration(seconds)
+                        showNonePlaceholder -> stringResource(R.string.rest_timer_none)
+                        else -> formatRestDuration(seconds)
+                    }
+                    Text(
+                        text = labelText,
+                        style = typography.subtitle1,
+                        color = colors.onSurface
+                    )
+                }
+            }
+            IconButton(
+                onClick = {
+                    onSecondsChange((seconds + REST_TIMER_STEP_SECONDS).coerceAtMost(MAX_REST_TIMER_SECONDS))
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.rest_timer_increase)
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextButton(
+                onClick = {
+                    onSecondsChange((seconds - 30).coerceAtLeast(0))
+                },
+                enabled = seconds > 0
+            ) {
+                Text(stringResource(R.string.rest_timer_minus_30))
+            }
+            TextButton(
+                onClick = {
+                    onSecondsChange((seconds + 30).coerceAtMost(MAX_REST_TIMER_SECONDS))
+                }
+            ) {
+                Text(stringResource(R.string.rest_timer_plus_30))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RestTimerIconButton(
+    hasRestTimers: Boolean,
+    warmupSeconds: Int,
+    workingSeconds: Int,
+    onClick: () -> Unit,
+) {
+    val colors = MaterialTheme.colors
+    val warmupText = if (warmupSeconds > 0) {
+        formatRestDuration(warmupSeconds)
+    } else {
+        stringResource(R.string.rest_timer_none)
+    }
+    val workingText = if (workingSeconds > 0) {
+        formatRestDuration(workingSeconds)
+    } else {
+        stringResource(R.string.rest_timer_none)
+    }
+    val tint = if (hasRestTimers) colors.primary else colors.onSurface.copy(alpha = 0.6f)
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.Default.Timer,
+            contentDescription = stringResource(
+                R.string.rest_timer_icon_description,
+                warmupText,
+                workingText
+            ),
+            tint = tint
+        )
     }
 }
 
@@ -419,6 +609,8 @@ private fun RoutineEditorContent(
                                     )
                                 }
                             ) {
+                                Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
                                 Text(stringResource(R.string.btn_add_notes))
                             }
                             restTimerButton()

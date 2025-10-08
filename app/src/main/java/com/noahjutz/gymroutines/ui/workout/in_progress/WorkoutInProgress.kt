@@ -72,6 +72,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.rememberDismissState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -87,10 +88,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.lerp
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.WorkoutSet
+import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
+import com.noahjutz.gymroutines.ui.components.RestTimerDialog
 import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
@@ -201,6 +204,35 @@ private fun WorkoutInProgressContent(
     }
 
     val restTimerState by viewModel.restTimerState.collectAsState()
+    var pendingSetDeletion by remember { mutableStateOf<WorkoutSet?>(null) }
+    pendingSetDeletion?.let { set ->
+        ConfirmDeleteWorkoutSetDialog(
+            onDismiss = { pendingSetDeletion = null },
+            onConfirm = {
+                viewModel.deleteSet(set)
+                pendingSetDeletion = null
+            }
+        )
+    }
+
+    var restTimerEditorGroup by remember { mutableStateOf<WorkoutSetGroupWithSets?>(null) }
+    restTimerEditorGroup?.let { group ->
+        RestTimerDialog(
+            initialWarmupSeconds = group.group.restTimerWarmupSeconds,
+            initialWorkingSeconds = group.group.restTimerWorkingSeconds,
+            onDismiss = { restTimerEditorGroup = null },
+            onConfirm = { warmupSeconds, workingSeconds ->
+                viewModel.updateRestTimers(group.group.id, warmupSeconds, workingSeconds)
+                restTimerEditorGroup = null
+            },
+            onRemove = if (group.group.restTimerWarmupSeconds > 0 || group.group.restTimerWorkingSeconds > 0) {
+                {
+                    viewModel.updateRestTimers(group.group.id, 0, 0)
+                    restTimerEditorGroup = null
+                }
+            } else null
+        )
+    }
 
     val sortedSetGroups by remember(workout.setGroups) {
         derivedStateOf { workout.setGroups.sortedBy { it.group.position } }
@@ -341,6 +373,9 @@ private fun WorkoutInProgressContent(
 
                     if (exercise != null) {
                         val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
+                        val hasRestTimers = setGroup.group.restTimerWarmupSeconds > 0 ||
+                            setGroup.group.restTimerWorkingSeconds > 0
+                        val timerTint = if (hasRestTimers) colors.primary else colors.onSurface.copy(alpha = 0.6f)
                         if (trimmedNotes.isNotEmpty()) {
                             Surface(
                                 modifier = Modifier
@@ -365,6 +400,13 @@ private fun WorkoutInProgressContent(
                                         color = colors.onSurface.copy(alpha = 0.9f),
                                         modifier = Modifier.weight(1f)
                                     )
+                                    IconButton(onClick = { restTimerEditorGroup = setGroup }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Timer,
+                                            contentDescription = stringResource(R.string.rest_timer_edit),
+                                            tint = timerTint
+                                        )
+                                    }
                                     IconButton(
                                         onClick = {
                                             notesEditorState = ExerciseNotesDialogState(
@@ -383,20 +425,34 @@ private fun WorkoutInProgressContent(
                                 }
                             }
                         } else {
-                            TextButton(
+                            Row(
                                 modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                                onClick = {
-                                    notesEditorState = ExerciseNotesDialogState(
-                                        exerciseId = exercise.exerciseId,
-                                        name = exercise.name,
-                                        notes = exercise.notes
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    .fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    modifier = Modifier.weight(1f),
+                                    onClick = {
+                                        notesEditorState = ExerciseNotesDialogState(
+                                            exerciseId = exercise.exerciseId,
+                                            name = exercise.name,
+                                            notes = exercise.notes
+                                        )
+                                    }
+                                ) {
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(stringResource(R.string.btn_add_notes))
+                                }
+                                Spacer(Modifier.width(4.dp))
+                                IconButton(onClick = { restTimerEditorGroup = setGroup }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = stringResource(R.string.rest_timer_add),
+                                        tint = timerTint
                                     )
                                 }
-                            ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.btn_add_notes))
                             }
                         }
                     }
@@ -494,16 +550,16 @@ private fun WorkoutInProgressContent(
                                 )
                             }
                         }
-                        var workingSetIndex = 0
                         setGroup.sets.forEachIndexed { index, set ->
                             key(set.workoutSetId) {
-                                val dismissState = rememberDismissState()
-                                LaunchedEffect(dismissState.currentValue) {
-                                    if (dismissState.currentValue != DismissValue.Default) {
-                                        viewModel.deleteSet(set)
-                                        dismissState.snapTo(DismissValue.Default)
+                                val dismissState = rememberDismissState(
+                                    confirmStateChange = { value ->
+                                        if (value != DismissValue.Default) {
+                                            pendingSetDeletion = set
+                                        }
+                                        false
                                     }
-                                }
+                                )
                                 SwipeToDismiss(
                                     state = dismissState,
                                     background = { SwipeToDeleteBackground(dismissState) },
@@ -515,9 +571,19 @@ private fun WorkoutInProgressContent(
                                             Row(
                                                 Modifier.fillMaxWidth()
                                             ) {
+                                                val workingSetNumber = remember(setGroup.sets, index, set.isWarmup) {
+                                                    if (set.isWarmup) {
+                                                        0
+                                                    } else {
+                                                        setGroup.sets
+                                                            .take(index + 1)
+                                                            .count { !it.isWarmup }
+                                                            .let { (it - 1).coerceAtLeast(0) }
+                                                    }
+                                                }
                                                 SetTypeBadge(
                                                     isWarmup = set.isWarmup,
-                                                    index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
+                                                    index = workingSetNumber,
                                                     modifier = Modifier
                                                         .padding(3.dp)
                                                         .width(WarmupIndicatorWidth),
@@ -773,6 +839,21 @@ private fun WorkoutInProgressContent(
             }
         }
     }
+}
+
+@Composable
+private fun ConfirmDeleteWorkoutSetDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.dialog_title_delete, stringResource(R.string.dialog_item_set)))
+        },
+        confirmButton = { Button(onClick = onConfirm) { Text(stringResource(R.string.btn_delete)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.btn_cancel)) } },
+    )
 }
 
 @Composable

@@ -180,6 +180,7 @@
     <string name="rest_timer_indicator_working">Set rest</string>
     <string name="rest_timer_minus_30">-30s</string>
     <string name="rest_timer_plus_30">+30s</string>
+    <string name="rest_timer_plus_minute">+1:00</string>
     <string name="rest_timer_notification_running_title">Rest timer</string>
     <string name="rest_timer_notification_running_body">%1$s • %2$s remaining</string>
     <string name="rest_timer_notification_complete_title">Rest is over</string>

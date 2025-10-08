@@ -56,6 +56,7 @@ import java.util.Calendar
 import java.util.Date
 
 private const val REST_TIMER_NOTIFICATION_ID = 1
+private const val MAX_REST_SECONDS = 99 * 60 + 59
 
 data class RestTimerState(
     val setId: Int,
@@ -198,6 +199,34 @@ class WorkoutInProgressViewModel(
             if (isWarmup && !canBeWarmup(set)) return@launch
 
             workoutRepository.update(set.copy(isWarmup = isWarmup))
+        }
+    }
+
+    fun updateRestTimers(groupId: Int, warmupSeconds: Int, workingSeconds: Int) {
+        viewModelScope.launch {
+            workoutRepository.getSetGroup(groupId)?.let { group ->
+                val clampedWarmup = warmupSeconds.coerceIn(0, MAX_REST_SECONDS)
+                val clampedWorking = workingSeconds.coerceIn(0, MAX_REST_SECONDS)
+
+                workoutRepository.update(
+                    group.copy(
+                        restTimerWarmupSeconds = clampedWarmup,
+                        restTimerWorkingSeconds = clampedWorking,
+                    )
+                )
+
+                val current = _restTimerState.value
+                if (current != null && current.groupId == groupId) {
+                    val newDuration = if (current.isWarmup) clampedWarmup else clampedWorking
+                    if (newDuration <= 0) {
+                        clearRestTimer()
+                    } else if (current.remainingSeconds > newDuration) {
+                        val updatedState = current.copy(remainingSeconds = newDuration)
+                        _restTimerState.value = updatedState
+                        updateRestTimerNotification(updatedState)
+                    }
+                }
+            }
         }
     }
 

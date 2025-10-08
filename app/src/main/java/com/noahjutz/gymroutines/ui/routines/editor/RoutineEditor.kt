@@ -32,7 +32,6 @@ import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -49,16 +48,15 @@ import com.noahjutz.gymroutines.data.domain.Routine
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroupWithSets
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
+import com.noahjutz.gymroutines.ui.components.RestTimerDialog
 import com.noahjutz.gymroutines.ui.components.SetTypeBadge
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.util.RegexPatterns
-import com.noahjutz.gymroutines.util.durationDigitsToSeconds
 import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
-import com.noahjutz.gymroutines.util.secondsToDurationDigits
 import com.noahjutz.gymroutines.util.toStringOrBlank
 import org.koin.androidx.compose.getViewModel
 import org.koin.core.parameter.parametersOf
@@ -181,85 +179,6 @@ private fun RestTimerSummary(
             }
         }
     }
-}
-
-@Composable
-private fun RestTimerDialog(
-    initialWarmupSeconds: Int,
-    initialWorkingSeconds: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int, Int) -> Unit,
-    onRemove: () -> Unit,
-) {
-    var warmupValue by rememberSaveable(initialWarmupSeconds) {
-        mutableStateOf(secondsToDurationDigits(initialWarmupSeconds))
-    }
-    var workingValue by rememberSaveable(initialWorkingSeconds) {
-        mutableStateOf(
-            secondsToDurationDigits(initialWorkingSeconds).ifBlank { secondsToDurationDigits(120) }
-        )
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.dialog_title_rest_timer)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.dialog_body_rest_timer))
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = warmupValue,
-                    onValueChange = {
-                        if (it.matches(RegexPatterns.duration)) warmupValue = it
-                    },
-                    label = { Text(stringResource(R.string.rest_timer_warmup_field)) },
-                    placeholder = { Text(stringResource(R.string.rest_timer_none)) },
-                    visualTransformation = durationVisualTransformation,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = workingValue,
-                    onValueChange = {
-                        if (it.matches(RegexPatterns.duration)) workingValue = it
-                    },
-                    label = { Text(stringResource(R.string.rest_timer_working_field)) },
-                    visualTransformation = durationVisualTransformation,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.rest_timer_hint_none),
-                    style = typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                )
-                if (initialWarmupSeconds > 0 || initialWorkingSeconds > 0) {
-                    Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = onRemove) {
-                        Text(stringResource(R.string.dialog_remove_rest_timer))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val warmupSeconds = durationDigitsToSeconds(warmupValue)
-                    val workingSeconds = durationDigitsToSeconds(workingValue)
-                    onConfirm(warmupSeconds, workingSeconds)
-                }
-            ) {
-                Text(stringResource(R.string.dialog_confirm_rest_timer))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.btn_cancel))
-            }
-        }
-    )
 }
 
 @Composable

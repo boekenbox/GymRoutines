@@ -103,7 +103,6 @@ import com.noahjutz.gymroutines.util.pretty
 import com.noahjutz.gymroutines.util.toStringOrBlank
 import org.koin.androidx.compose.getViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.math.max
 
 @ExperimentalFoundationApi
 @ExperimentalAnimationApi
@@ -495,6 +494,7 @@ private fun WorkoutInProgressContent(
                                 )
                             }
                         }
+                        var workingSetIndex = 0
                         setGroup.sets.forEachIndexed { index, set ->
                             key(set.workoutSetId) {
                                 val dismissState = rememberDismissState()
@@ -517,16 +517,7 @@ private fun WorkoutInProgressContent(
                                             ) {
                                                 SetTypeBadge(
                                                     isWarmup = set.isWarmup,
-                                                    index = if (set.isWarmup) {
-                                                        0
-                                                    } else {
-                                                        max(
-                                                            setGroup.sets
-                                                                .take(index + 1)
-                                                                .count { !it.isWarmup } - 1,
-                                                            0
-                                                        )
-                                                    },
+                                                    index = if (set.isWarmup) workingSetIndex else workingSetIndex++,
                                                     modifier = Modifier
                                                         .padding(3.dp)
                                                         .width(WarmupIndicatorWidth),

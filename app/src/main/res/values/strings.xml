@@ -173,16 +173,13 @@
     <string name="dialog_body_rest_timer">Completed timers will not be affected. Durations will be saved for next time.</string>
     <string name="rest_timer_warmup_field">Warm-up sets</string>
     <string name="rest_timer_working_field">Working sets</string>
-    <string name="rest_timer_hint_none">Set the duration to 0:00 to disable the timer.</string>
+    <string name="rest_timer_hint_none">Leave blank to disable the timer.</string>
     <string name="dialog_confirm_rest_timer">Save timers</string>
     <string name="dialog_remove_rest_timer">Remove rest timers</string>
     <string name="rest_timer_indicator_warmup">Warm-up rest</string>
     <string name="rest_timer_indicator_working">Set rest</string>
     <string name="rest_timer_minus_30">-30s</string>
     <string name="rest_timer_plus_30">+30s</string>
-    <string name="rest_timer_icon_description">Rest timers. Warm-up: %1$s. Working: %2$s.</string>
-    <string name="rest_timer_increase">Increase rest duration</string>
-    <string name="rest_timer_decrease">Decrease rest duration</string>
     <string name="rest_timer_notification_running_title">Rest timer</string>
     <string name="rest_timer_notification_running_body">%1$s • %2$s remaining</string>
     <string name="rest_timer_notification_complete_title">Rest is over</string>

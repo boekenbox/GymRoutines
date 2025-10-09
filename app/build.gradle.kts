@@ -60,6 +60,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
         }
+        create("perf") {
+            initWith(getByName("release"))               // copy all release flags
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false                          // crucial for ART optimizations and BuildConfig.DEBUG=false
+            matchingFallbacks += listOf("release")
+        }
         debug {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"

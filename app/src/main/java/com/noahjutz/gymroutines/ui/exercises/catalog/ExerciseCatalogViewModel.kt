@@ -60,7 +60,14 @@ class ExerciseCatalogViewModel(
         activeFilters: ExerciseCatalogFilters,
         sort: ExerciseSearchSortOption
     ) {
-        _state.update { it.copy(isLoading = true) }
+        _state.update {
+            it.copy(
+                isLoading = true,
+                query = query,
+                filters = activeFilters,
+                sort = sort
+            )
+        }
         val library = repository.ensureLoaded()
         val searchFilters = ExerciseSearchFilters(
             bodyParts = activeFilters.bodyParts,

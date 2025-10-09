@@ -2,20 +2,28 @@ package com.noahjutz.gymroutines.ui.exercises.catalog
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.noahjutz.gymroutines.data.ExerciseRepository
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryEntry
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseSearchFilters
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseSearchSortOption
+import com.noahjutz.gymroutines.data.exerciselibrary.libraryTag
+import com.noahjutz.gymroutines.data.exerciselibrary.toExercise
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ExerciseCatalogViewModel(
-    private val repository: ExerciseLibraryRepository
+    private val repository: ExerciseLibraryRepository,
+    private val exerciseRepository: ExerciseRepository,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
     private val filters = MutableStateFlow(ExerciseCatalogFilters())
@@ -33,6 +41,9 @@ class ExerciseCatalogViewModel(
     )
     val state: StateFlow<ExerciseCatalogUiState> = _state.asStateFlow()
 
+    private val _events = MutableSharedFlow<ExerciseCatalogEvent>()
+    val events: SharedFlow<ExerciseCatalogEvent> = _events.asSharedFlow()
+
     init {
         viewModelScope.launch { repository.ensureLoaded() }
         viewModelScope.launch {
@@ -49,6 +60,7 @@ class ExerciseCatalogViewModel(
         activeFilters: ExerciseCatalogFilters,
         sort: ExerciseSearchSortOption
     ) {
+        _state.update { it.copy(isLoading = true) }
         val library = repository.ensureLoaded()
         val searchFilters = ExerciseSearchFilters(
             bodyParts = activeFilters.bodyParts,
@@ -86,6 +98,10 @@ class ExerciseCatalogViewModel(
         sort.value = option
     }
 
+    fun onSuggestionSelected(value: String) {
+        query.value = value
+    }
+
     fun toggleBodyPart(value: String) = toggle(filters.value.bodyParts) { updated ->
         filters.update { it.copy(bodyParts = updated) }
     }(value)
@@ -117,6 +133,31 @@ class ExerciseCatalogViewModel(
     fun currentSort(): ExerciseSearchSortOption = sort.value
 
     fun currentQuery(): String = query.value
+
+    fun import(entry: ExerciseLibraryEntry) {
+        viewModelScope.launch {
+            val existing = exerciseRepository.exercises.first()
+                .firstOrNull { it.tags == entry.libraryTag }
+            if (existing != null) {
+                _events.emit(
+                    ExerciseCatalogEvent.ExerciseAlreadyInLibrary(
+                        name = existing.name,
+                        exerciseId = existing.exerciseId
+                    )
+                )
+                return@launch
+            }
+
+            val exercise = entry.toExercise()
+            val id = exerciseRepository.insert(exercise)
+            _events.emit(
+                ExerciseCatalogEvent.ExerciseImported(
+                    name = exercise.name,
+                    exerciseId = id.toInt()
+                )
+            )
+        }
+    }
 
     private fun toggle(
         source: Set<String>,
@@ -162,3 +203,8 @@ data class ExerciseCatalogFacets(
     val difficulties: List<String> = emptyList(),
     val mechanics: List<String> = emptyList(),
 )
+
+sealed class ExerciseCatalogEvent {
+    data class ExerciseImported(val name: String, val exerciseId: Int) : ExerciseCatalogEvent()
+    data class ExerciseAlreadyInLibrary(val name: String, val exerciseId: Int) : ExerciseCatalogEvent()
+}

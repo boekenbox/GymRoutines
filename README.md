@@ -18,6 +18,10 @@ An Open-Source Android app for creating training plans and tracking progress.
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="20%"/>
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="20%"/>
 
+## Exercise library
+
+Browse more than a thousand ready-made movements by opening **Exercises → ⋮ → Browse exercise library**. Search or tap the suggested filters, preview the instructions, then add the entry straight to *My Exercises* so it’s ready to log in workouts.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)

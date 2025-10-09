@@ -51,6 +51,7 @@ import org.koin.androidx.compose.getViewModel
 fun ExerciseList(
     navToExerciseEditor: (Int) -> Unit,
     navToSettings: () -> Unit,
+    navToExerciseCatalog: () -> Unit,
     viewModel: ExerciseListViewModel = getViewModel(),
 ) {
     Scaffold(
@@ -67,7 +68,20 @@ fun ExerciseList(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
-                            DropdownMenuItem(onClick = navToSettings) {
+                            DropdownMenuItem(
+                                onClick = {
+                                    expanded = false
+                                    navToExerciseCatalog()
+                                }
+                            ) {
+                                Text(stringResource(R.string.menu_browse_exercise_library))
+                            }
+                            DropdownMenuItem(
+                                onClick = {
+                                    expanded = false
+                                    navToSettings()
+                                }
+                            ) {
                                 Text("Settings")
                             }
                         }

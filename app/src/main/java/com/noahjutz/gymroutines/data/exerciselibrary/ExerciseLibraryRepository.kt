@@ -63,6 +63,10 @@ class ExerciseLibraryRepository(
         return library.entries.firstOrNull { it.id == id }
     }
 
+    suspend fun getExerciseByTag(tag: String): ExerciseLibraryEntry? {
+        return getExercise(tag.removePrefix("library:"))
+    }
+
     suspend fun relatedExercises(
         primaryMuscle: String?,
         equipment: String?,

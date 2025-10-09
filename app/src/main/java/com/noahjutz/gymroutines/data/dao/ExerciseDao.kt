@@ -41,4 +41,7 @@ interface ExerciseDao {
 
     @Query("SELECT * FROM exercise_table WHERE exerciseId == :id")
     fun getExerciseFlow(id: Int): Flow<Exercise?>
+
+    @Query("SELECT * FROM exercise_table WHERE tags = :tag LIMIT 1")
+    suspend fun getExerciseByTag(tag: String): Exercise?
 }

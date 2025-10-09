@@ -1,88 +1,145 @@
-/*
- * Splitfit
- * Copyright (C) 2020  Noah Jutz
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.noahjutz.gymroutines.ui.exercises.picker
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.noahjutz.gymroutines.data.ExerciseRepository
-import com.noahjutz.gymroutines.data.domain.Exercise
+import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryEntry
+import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
+import com.noahjutz.gymroutines.data.exerciselibrary.displayName
+import com.noahjutz.gymroutines.data.exerciselibrary.libraryTag
+import com.noahjutz.gymroutines.data.exerciselibrary.toExercise
+import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListItem
+import com.noahjutz.gymroutines.ui.exercises.list.isSameLibraryEntry
+import com.noahjutz.gymroutines.ui.exercises.list.matchesQuery
+import com.noahjutz.gymroutines.ui.exercises.list.toCustomListItem
+import com.noahjutz.gymroutines.ui.exercises.list.toLibraryListItem
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+private const val LIBRARY_TAG_PREFIX = "library:"
 
 class ExercisePickerViewModel(
-    exerciseRepository: ExerciseRepository,
+    private val exerciseRepository: ExerciseRepository,
+    private val libraryRepository: ExerciseLibraryRepository,
 ) : ViewModel() {
-    private val _nameFilter = MutableStateFlow("")
-    private val exercises = exerciseRepository.exercises
-    private val _selectedExerciseIds = MutableStateFlow(emptyList<Int>())
+    private val locale: Locale = Locale.getDefault()
+    private val query = MutableStateFlow("")
+    private val selectedExerciseIds = MutableStateFlow(emptyList<Int>())
+    private val selectedLibraryIds = MutableStateFlow(emptySet<String>())
+
+    init {
+        viewModelScope.launch { libraryRepository.ensureLoaded() }
+    }
 
     fun search(name: String) {
-        _nameFilter.value = name
+        query.value = name
     }
 
-    fun addExercise(exercise: Exercise) {
-        val id = exercise.exerciseId
-        _selectedExerciseIds.update { current ->
-            if (current.contains(id)) current else current + id
-        }
-    }
+    val nameFilter: Flow<String> = query
 
-    fun removeExercise(exercise: Exercise) {
-        val id = exercise.exerciseId
-        _selectedExerciseIds.update { current ->
-            current.filterNot { it == id }
-        }
-    }
+    val allExercises = combine(
+        exerciseRepository.exercises,
+        libraryRepository.observe(),
+        query
+    ) { exercises, library, queryValue ->
+        val normalizedQuery = queryValue.trim().lowercase(locale)
+        val libraryEntries = library?.entries.orEmpty()
+        val libraryById = libraryEntries.associateBy { it.id }
 
-    val nameFilter = _nameFilter.asStateFlow()
+        val visibleExercises = exercises.filterNot { it.hidden }
+        val hiddenLibraryIds = exercises.filter { it.hidden && it.tags.startsWith(LIBRARY_TAG_PREFIX) }
+            .mapNotNull { it.tags.removePrefix(LIBRARY_TAG_PREFIX).takeIf(String::isNotBlank) }
+            .toSet()
 
-    val allExercises = exercises
-        .combine(_nameFilter) { exercises, nameFilter ->
-            val locale = Locale.getDefault()
-            val normalizedFilter = nameFilter.trim().lowercase(locale)
-            val visibleExercises = exercises.filterNot(Exercise::hidden)
+        val items = buildList<ExerciseListItem> {
+            visibleExercises.forEach { exercise ->
+                if (exercise.tags.startsWith(LIBRARY_TAG_PREFIX)) {
+                    val id = exercise.tags.removePrefix(LIBRARY_TAG_PREFIX)
+                    val entry = libraryById[id]
+                    if (entry != null) {
+                        add(exercise.toLibraryListItem(entry, locale))
+                    }
+                } else {
+                    add(exercise.toCustomListItem(locale))
+                }
+            }
 
-            if (normalizedFilter.isEmpty()) {
-                visibleExercises
-            } else {
-                visibleExercises.filter { exercise ->
-                    exercise.name.lowercase(locale).contains(normalizedFilter)
+            libraryEntries.forEach { entry ->
+                if (entry.id !in hiddenLibraryIds && this.none { it.isSameLibraryEntry(entry.id) }) {
+                    add(entry.toLibraryListItem(locale))
                 }
             }
         }
+
+        items
+            .filter { it.matchesQuery(normalizedQuery) }
+            .sortedBy { it.sortKey }
+    }
         .flowOn(Dispatchers.Default)
-        .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val selectedExercises = _selectedExerciseIds.asStateFlow()
+    val selectedExerciseIdsFlow: Flow<List<Int>> = selectedExerciseIds
 
-    val selectedExerciseIds = selectedExercises
+    fun isSelected(item: ExerciseListItem): Flow<Boolean> {
+        return combine(selectedExerciseIds, selectedLibraryIds) { exerciseIds, libraryIds ->
+            when {
+                item.exerciseId != null -> exerciseIds.contains(item.exerciseId)
+                item.entry != null -> libraryIds.contains(item.entry.id)
+                else -> false
+            }
+        }
+    }
 
-    fun exercisesContains(exercise: Exercise) =
-        selectedExercises.map { it.contains(exercise.exerciseId) }
+    fun onSelectionChanged(item: ExerciseListItem, selected: Boolean) {
+        if (selected) {
+            viewModelScope.launch {
+                if (item.exerciseId != null) {
+                    selectedExerciseIds.update { current ->
+                        if (current.contains(item.exerciseId)) current else current + item.exerciseId
+                    }
+                } else if (item.entry != null) {
+                    selectedLibraryIds.update { it + item.entry.id }
+                    val exerciseId = ensureExercise(item.entry)
+                    if (selectedLibraryIds.value.contains(item.entry.id)) {
+                        selectedExerciseIds.update { current ->
+                            if (current.contains(exerciseId)) current else current + exerciseId
+                        }
+                    }
+                }
+            }
+        } else {
+            if (item.exerciseId != null) {
+                selectedExerciseIds.update { current -> current.filterNot { it == item.exerciseId } }
+            }
+            item.entry?.let { entry ->
+                selectedLibraryIds.update { it - entry.id }
+            }
+        }
+    }
+
+    fun removeExercise(item: ExerciseListItem) {
+        onSelectionChanged(item, false)
+    }
+
+    private suspend fun ensureExercise(entry: ExerciseLibraryEntry): Int {
+        val existing = exerciseRepository.getExerciseByTag(entry.libraryTag)
+        val desiredName = entry.displayName(locale)
+        return if (existing != null) {
+            if (existing.name.equals(entry.name.trim(), ignoreCase = true) && existing.name != desiredName) {
+                exerciseRepository.update(existing.copy(name = desiredName))
+            }
+            existing.exerciseId
+        } else {
+            exerciseRepository.insert(entry.toExercise()).toInt()
+        }
+    }
 }

@@ -38,7 +38,6 @@ import com.google.accompanist.navigation.material.BottomSheetNavigator
 import com.google.accompanist.navigation.material.ExperimentalMaterialNavigationApi
 import com.google.accompanist.navigation.material.ModalBottomSheetLayout
 import com.google.accompanist.navigation.material.bottomSheet
-import com.noahjutz.gymroutines.ui.exercises.catalog.ExerciseCatalog
 import com.noahjutz.gymroutines.ui.exercises.editor.ExerciseEditor
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseList
 import com.noahjutz.gymroutines.ui.exercises.picker.ExercisePickerSheet
@@ -64,7 +63,6 @@ enum class Screen {
     routineEditor,
     exerciseList,
     exerciseEditor,
-    exerciseCatalog,
     exercisePicker,
     workoutInProgress,
     workoutViewer,
@@ -152,8 +150,7 @@ fun NavGraph(
             composable(Screen.exerciseList.name) {
                 ExerciseList(
                     navToExerciseEditor = { exerciseId -> navController.navigate("${Screen.exerciseEditor}?exerciseId=$exerciseId") },
-                    navToSettings = { navController.navigate(Screen.settings.name) },
-                    navToExerciseCatalog = { navController.navigate(Screen.exerciseCatalog.name) }
+                    navToSettings = { navController.navigate(Screen.settings.name) }
                 )
             }
             composable(
@@ -168,14 +165,6 @@ fun NavGraph(
                 ExerciseEditor(
                     exerciseId = backStackEntry.arguments!!.getInt("exerciseId"),
                     popBackStack = { navController.popBackStack() },
-                )
-            }
-            composable(Screen.exerciseCatalog.name) {
-                ExerciseCatalog(
-                    onBack = { navController.popBackStack() },
-                    onOpenMyExercises = {
-                        navController.popBackStack(Screen.exerciseList.name, inclusive = false)
-                    }
                 )
             }
             composable(

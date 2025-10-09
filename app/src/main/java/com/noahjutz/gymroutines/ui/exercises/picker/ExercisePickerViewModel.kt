@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -34,6 +35,7 @@ class ExercisePickerViewModel(
 ) : ViewModel() {
     private val locale: Locale = Locale.getDefault()
     private val query = MutableStateFlow("")
+    val searchQuery = query.asStateFlow()
     private val selectedExerciseIds = MutableStateFlow(emptyList<Int>())
     private val selectedLibraryIds = MutableStateFlow(emptySet<String>())
     private val selectedFilters = MutableStateFlow(setOf<String>())

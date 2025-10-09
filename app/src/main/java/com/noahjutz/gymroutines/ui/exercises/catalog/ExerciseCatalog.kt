@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
@@ -33,7 +32,6 @@ import androidx.compose.material.TextButton
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,11 +94,7 @@ fun ExerciseCatalog(
     preview?.let { entry ->
         ExerciseDetailsDialog(
             entry = entry,
-            onDismiss = { preview = null },
-            onAdd = {
-                preview = null
-                viewModel.import(entry)
-            }
+            onDismiss = { preview = null }
         )
     }
 
@@ -124,8 +118,7 @@ fun ExerciseCatalog(
                 .padding(paddingValues),
             onQueryChange = viewModel::onQueryChanged,
             onSuggestionClicked = viewModel::onSuggestionSelected,
-            onPreview = { preview = it },
-            onImport = { viewModel.import(it) }
+            onPreview = { preview = it }
         )
     }
 }
@@ -138,7 +131,6 @@ private fun ExerciseCatalogContent(
     onQueryChange: (String) -> Unit,
     onSuggestionClicked: (String) -> Unit,
     onPreview: (ExerciseLibraryEntry) -> Unit,
-    onImport: (ExerciseLibraryEntry) -> Unit,
 ) {
     Column(
         modifier = modifier,
@@ -215,8 +207,7 @@ private fun ExerciseCatalogContent(
             items(state.exercises, key = { it.id }) { entry ->
                 ExerciseCatalogItem(
                     entry = entry,
-                    onPreview = { onPreview(entry) },
-                    onImport = { onImport(entry) }
+                    onPreview = { onPreview(entry) }
                 )
             }
         }
@@ -257,7 +248,6 @@ private fun SuggestionChip(
 private fun ExerciseCatalogItem(
     entry: ExerciseLibraryEntry,
     onPreview: () -> Unit,
-    onImport: () -> Unit,
 ) {
     Card(
         modifier = Modifier
@@ -296,12 +286,6 @@ private fun ExerciseCatalogItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            TextButton(onClick = onImport) {
-                Icon(Icons.Default.LibraryAdd, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = stringResource(R.string.btn_add_to_my_exercises))
-            }
         }
     }
 }
@@ -310,7 +294,6 @@ private fun ExerciseCatalogItem(
 private fun ExerciseDetailsDialog(
     entry: ExerciseLibraryEntry,
     onDismiss: () -> Unit,
-    onAdd: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -368,14 +351,10 @@ private fun ExerciseDetailsDialog(
                 }
             }
         },
-        confirmButton = {
-            Button(onClick = onAdd) {
-                Text(stringResource(R.string.btn_add_to_my_exercises))
-            }
-        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.btn_cancel))
+                Text(stringResource(R.string.btn_close))
             }
         }
     )

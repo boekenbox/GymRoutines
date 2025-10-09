@@ -35,10 +35,10 @@ class ExerciseEditorViewModel(
     private val _notes = MutableStateFlow("")
     val notes = _notes.asStateFlow()
 
-    private val _logReps = MutableStateFlow(false)
+    private val _logReps = MutableStateFlow(true)
     val logReps = _logReps.asStateFlow()
 
-    private val _logWeight = MutableStateFlow(false)
+    private val _logWeight = MutableStateFlow(true)
     val logWeight = _logWeight.asStateFlow()
 
     private val _logTime = MutableStateFlow(false)
@@ -68,8 +68,8 @@ class ExerciseEditorViewModel(
                 _currentExercise.value = it
                 _name.value = it.name
                 _notes.value = it.notes
-                _logReps.value = it.logReps
-                _logWeight.value = it.logWeight
+                _logReps.value = true
+                _logWeight.value = true
                 _logTime.value = it.logTime
                 _logDistance.value = it.logDistance
             }
@@ -123,12 +123,12 @@ class ExerciseEditorViewModel(
         _notes.value = notes
     }
 
-    fun setLogReps(logReps: Boolean) {
-        _logReps.value = logReps
+    fun setLogReps(@Suppress("UNUSED_PARAMETER") logReps: Boolean) {
+        _logReps.value = true
     }
 
-    fun setLogWeight(logWeight: Boolean) {
-        _logWeight.value = logWeight
+    fun setLogWeight(@Suppress("UNUSED_PARAMETER") logWeight: Boolean) {
+        _logWeight.value = true
     }
 
     fun setLogTime(logTime: Boolean) {
@@ -145,8 +145,8 @@ class ExerciseEditorViewModel(
             val exercise = base.copy(
                 name = name.value,
                 notes = notes.value,
-                logReps = logReps.value,
-                logWeight = logWeight.value,
+                logReps = true,
+                logWeight = true,
                 logTime = logTime.value,
                 logDistance = logDistance.value,
                 hidden = false,

@@ -56,7 +56,6 @@ fun ExerciseDetailDialog(
     data: ExerciseDetailData,
     onDismiss: () -> Unit,
     onEdit: ((Int) -> Unit)? = null,
-    onSave: (() -> Unit)? = null,
 ) {
     val locale = remember { Locale.getDefault() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -81,7 +80,6 @@ fun ExerciseDetailDialog(
                             data = data,
                             locale = locale,
                             onEdit = onEdit,
-                            onSave = onSave
                         )
                         is ExerciseDetailData.Custom -> CustomExerciseDetail(
                             exercise = data.exercise,
@@ -109,7 +107,6 @@ private fun LibraryExerciseDetail(
     data: ExerciseDetailData.Library,
     locale: Locale,
     onEdit: ((Int) -> Unit)?,
-    onSave: (() -> Unit)?
 ) {
     val entry = data.entry
     val exercise = data.exercise
@@ -223,11 +220,6 @@ private fun LibraryExerciseDetail(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            if (onSave != null && exercise == null) {
-                TextButton(onClick = onSave) {
-                    Text(stringResource(R.string.btn_add_to_my_exercises))
-                }
-            }
             if (onEdit != null) {
                 exercise?.let {
                     TextButton(onClick = { onEdit(it.exerciseId) }) {

@@ -81,13 +81,7 @@ fun ExercisePickerSheet(
         ExerciseDetailDialog(
             data = data,
             onDismiss = { detailItem = null },
-            onEdit = null,
-            onSave = if (detailItem?.exerciseId == null && detailItem?.entry != null) {
-                {
-                    detailItem?.let { viewModel.onSelectionChanged(it, true) }
-                    detailItem = null
-                }
-            } else null
+            onEdit = null
         )
     }
     Column(modifier = Modifier.fillMaxSize()) {

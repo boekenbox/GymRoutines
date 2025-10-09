@@ -42,7 +42,6 @@
     <string name="screen_insights">Insights</string>
     <string name="btn_new_exercise">New Exercise</string>
     <string name="menu_browse_exercise_library">Browse exercise library</string>
-    <string name="btn_add_to_my_exercises">Save as Custom Exercise</string>
     <string name="hint_exercise_catalog">Browse the built-in library, tap an exercise to preview it, and add it to your list.</string>
     <string name="hint_exercise_catalog_empty">No exercises match your search yet.</string>
     <string name="label_search_suggestions">Suggestions</string>

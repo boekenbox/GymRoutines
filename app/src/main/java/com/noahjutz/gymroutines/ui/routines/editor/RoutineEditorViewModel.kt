@@ -116,6 +116,13 @@ class RoutineEditorViewModel(
         _routine?.let { routine ->
             viewModelScope.launch {
                 for (exerciseId in exerciseIds) {
+                    exerciseRepository.getExercise(exerciseId)?.let { exercise ->
+                        if (!exercise.logReps || !exercise.logWeight) {
+                            exerciseRepository.update(
+                                exercise.copy(logReps = true, logWeight = true)
+                            )
+                        }
+                    }
                     val setGroup = RoutineSetGroup(
                         exerciseId = exerciseId,
                         routineId = routine.routineId,

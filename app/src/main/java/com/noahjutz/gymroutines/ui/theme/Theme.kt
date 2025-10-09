@@ -36,9 +36,9 @@ val BlackColorPalette = darkColors(
 )
 
 private val GymShapes = Shapes(
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(20.dp)
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(26.dp)
 )
 
 @Composable

@@ -25,12 +25,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,7 +79,7 @@ fun RoutineList(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
+                modifier = Modifier.defaultMinSize(minHeight = 52.dp),
                 onClick = {
                     viewModel.addRoutine(
                         onComplete = { id ->
@@ -88,11 +90,11 @@ fun RoutineList(
                 icon = { Icon(Icons.Default.Add, null) },
                 text = { Text(stringResource(R.string.btn_new_routine)) },
                 shape = MaterialTheme.shapes.large,
-                backgroundColor = MaterialTheme.colors.secondary,
-                contentColor = MaterialTheme.colors.onSecondary,
+                backgroundColor = MaterialTheme.colors.primary,
+                contentColor = MaterialTheme.colors.onPrimary,
                 elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 4.dp,
-                    pressedElevation = 8.dp
+                    defaultElevation = 6.dp,
+                    pressedElevation = 10.dp
                 )
             )
         },
@@ -158,58 +160,77 @@ fun RoutineListContent(
                 state = dismissState,
                 background = { SwipeToDeleteBackground(dismissState) }
             ) {
+                val elevation by animateDpAsState(
+                    if (dismissState.dismissDirection != null) 8.dp else 3.dp
+                )
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    elevation = animateDpAsState(
-                        if (dismissState.dismissDirection != null) 6.dp else 2.dp
-                    ).value
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clickable { navToRoutineEditor(routine.routineId.toLong()) },
+                    shape = MaterialTheme.shapes.large,
+                    elevation = elevation
                 ) {
-                    ListItem(
+                    Row(
                         modifier = Modifier
-                            .clickable { navToRoutineEditor(routine.routineId.toLong()) }
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        icon = null,
-                        secondaryText = null,
-                        overlineText = null,
-                        singleLineSecondaryText = true,
-                        text = {
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colors.primary.copy(alpha = 0.12f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                val initial = routine.name.trim().takeIf { it.isNotEmpty() }?.first()
+                                    ?.uppercase()
+                                    ?: stringResource(R.string.unnamed_routine).first().uppercase()
+                                Text(
+                                    text = initial,
+                                    style = MaterialTheme.typography.subtitle1.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colors.primary
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(18.dp))
+                        Column(Modifier.weight(1f)) {
                             Text(
                                 text = routine.name.takeIf { it.isNotBlank() }
                                     ?: stringResource(R.string.unnamed_routine),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.subtitle1.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                style = MaterialTheme.typography.h6.copy(fontWeight = FontWeight.SemiBold)
                             )
-                        },
-                        trailing = {
-                            Box {
-                                var expanded by remember { mutableStateOf(false) }
-                                IconButton(onClick = { expanded = !expanded }) {
-                                    Icon(Icons.Default.MoreVert, null)
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        onClick = {
-                                            expanded = false
-                                            scope.launch {
-                                                dismissState.dismiss(DismissDirection.StartToEnd)
-                                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = stringResource(R.string.routine_card_hint),
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Box {
+                            var expanded by remember { mutableStateOf(false) }
+                            IconButton(onClick = { expanded = !expanded }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = null)
+                            }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    onClick = {
+                                        expanded = false
+                                        scope.launch {
+                                            dismissState.dismiss(DismissDirection.StartToEnd)
                                         }
-                                    ) {
-                                        Text(stringResource(R.string.btn_delete))
                                     }
+                                ) {
+                                    Text(stringResource(R.string.btn_delete))
                                 }
                             }
                         }
-                    )
+                    }
                 }
             }
 

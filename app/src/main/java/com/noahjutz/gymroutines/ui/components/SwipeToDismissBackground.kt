@@ -47,9 +47,9 @@ fun SwipeToDeleteBackground(dismissState: DismissState) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.secondary.copy(alpha = 0.9f))
-            .padding(horizontal = 16.dp),
+            .clip(MaterialTheme.shapes.large)
+            .background(colors.secondary.copy(alpha = 0.82f))
+            .padding(horizontal = 20.dp),
         contentAlignment = alignment
     ) {
         Icon(Icons.Default.Delete, null, tint = colors.onSecondary)

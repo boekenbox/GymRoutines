@@ -1,7 +1,9 @@
 package com.noahjutz.gymroutines.ui.workout.insights
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,10 +16,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -41,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -565,8 +570,15 @@ private fun RoutineUtilizationContent(utilization: RoutineUtilizationUi, onRouti
 
 @Composable
 private fun EmptyStateText(text: String) {
-    Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-        Text(text = text, style = typography.body2, color = colors.onSurface.copy(alpha = 0.6f))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.onSurface.copy(alpha = 0.03f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = text, style = typography.body2, color = colors.onSurface.copy(alpha = 0.65f))
     }
 }
 
@@ -582,16 +594,28 @@ private fun InsightCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        elevation = 4.dp,
+        shape = RoundedCornerShape(28.dp),
+        elevation = 0.dp,
+        border = BorderStroke(1.dp, colors.onSurface.copy(alpha = 0.06f)),
         onClick = onClick
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(colors.primary)
+                )
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(text = title, style = typography.h6)
+                    Text(text = title, style = typography.h6.copy(fontWeight = FontWeight.SemiBold))
                     subtitle?.let {
-                        Text(text = it, style = typography.caption, color = colors.onSurface.copy(alpha = 0.6f))
+                        Spacer(Modifier.height(4.dp))
+                        Text(text = it, style = typography.body2, color = colors.onSurface.copy(alpha = 0.65f))
                     }
                 }
                 action?.invoke()

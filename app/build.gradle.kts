@@ -1,3 +1,5 @@
+import PrepareExerciseIndexTask
+
 /*
  * Splitfit
  * Copyright (C) 2020  Noah Jutz
@@ -39,6 +41,11 @@ android {
 
         sourceSets {
             getByName("androidTest").assets.srcDirs("$projectDir/schemas")
+            getByName("main").assets.srcDirs(
+                "$projectDir/src/main/assets",
+                "$buildDir/intermediates/exerciseIndex",
+                "$projectDir/src/main/exercisedb-api-main"
+            )
         }
     }
 
@@ -135,6 +142,7 @@ dependencies {
     implementation("com.google.accompanist:accompanist-navigation-material:0.30.1")
     implementation("com.google.accompanist:accompanist-navigation-animation:0.30.1")
     implementation("com.google.accompanist:accompanist-placeholder-material:0.30.1")
+    implementation("io.coil-kt:coil-compose:2.4.0")
 
     androidTestImplementation("androidx.test:core:1.5.0")
     androidTestImplementation("androidx.test:core-ktx:1.5.0")
@@ -148,6 +156,30 @@ dependencies {
 
 ksp {
     arg(RoomSchemaArgProvider(File(projectDir, "schemas")))
+}
+
+val exerciseSourceDir = layout.projectDirectory.dir("src/main/exercisedb-api-main")
+val exerciseIndexOutput = layout.buildDirectory.dir("intermediates/exerciseIndex")
+
+val prepareExerciseIndex = tasks.register<PrepareExerciseIndexTask>("prepareExerciseIndex") {
+    group = "gymroutines"
+    description = "Prepare offline exercise index for the built-in exercise catalog"
+    sourceDir.set(exerciseSourceDir)
+    outputDir.set(exerciseIndexOutput)
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(prepareExerciseIndex)
+}
+
+tasks.configureEach {
+    if (name.startsWith("merge") && name.endsWith("Assets")) {
+        dependsOn(prepareExerciseIndex)
+    }
+}
+
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    dependsOn(prepareExerciseIndex)
 }
 class RoomSchemaArgProvider(
     @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) val schemaDir: File

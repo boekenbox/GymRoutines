@@ -98,7 +98,6 @@ import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
-import com.noahjutz.gymroutines.data.domain.Exercise
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
@@ -147,25 +146,23 @@ fun WorkoutInProgress(
             )
         },
     ) { paddingValues ->
-        val uiState by viewModel.uiState.collectAsState()
+        val workout by viewModel.workout.collectAsState(initial = null)
 
-        Crossfade(
-            targetState = uiState.workout,
-            modifier = Modifier.padding(paddingValues)
-        ) { workoutState ->
-            if (workoutState == null) {
+        Crossfade(workout == null, Modifier.padding(paddingValues)) { isNull ->
+            if (isNull) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
-                WorkoutInProgressContent(
-                    workout = workoutState,
-                    exercisesById = uiState.exercisesById,
-                    viewModel = viewModel,
-                    popBackStack = popBackStack,
-                    navToExercisePicker = navToExercisePicker,
-                    navToWorkoutCompleted = navToWorkoutCompleted,
-                )
+                workout?.let { workout ->
+                    WorkoutInProgressContent(
+                        workout = workout,
+                        viewModel = viewModel,
+                        popBackStack = popBackStack,
+                        navToExercisePicker = navToExercisePicker,
+                        navToWorkoutCompleted = navToWorkoutCompleted,
+                    )
+                }
             }
         }
     }
@@ -186,7 +183,6 @@ private data class ExerciseNotesDialogState(
 @Composable
 private fun WorkoutInProgressContent(
     workout: WorkoutWithSetGroups,
-    exercisesById: Map<Int, Exercise>,
     viewModel: WorkoutInProgressViewModel,
     popBackStack: () -> Unit,
     navToExercisePicker: () -> Unit,
@@ -314,7 +310,9 @@ private fun WorkoutInProgressContent(
             }
 
         items(sortedSetGroups, key = { it.group.id }) { setGroup ->
-            val exercise = exercisesById[setGroup.group.exerciseId]
+            val exerciseState = viewModel.getExercise(setGroup.group.exerciseId)
+                .collectAsState(initial = null)
+            val exercise = exerciseState.value
             val groupPrimary = colors.primary
             val groupPrimaryVariant = colors.primaryVariant
             val headerBrush = remember(groupPrimary, groupPrimaryVariant) {

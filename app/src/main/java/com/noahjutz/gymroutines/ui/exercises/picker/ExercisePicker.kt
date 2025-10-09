@@ -26,9 +26,10 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
@@ -59,6 +60,7 @@ import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.ui.components.Chip
 import com.noahjutz.gymroutines.ui.components.SearchBar
 import com.noahjutz.gymroutines.ui.components.TopBar
+import com.noahjutz.gymroutines.ui.exercises.components.ExerciseFilterPanel
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListItem
 import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailDialog
 import com.noahjutz.gymroutines.ui.exercises.detail.toDetailData
@@ -71,7 +73,7 @@ fun ExercisePickerSheet(
     onExercisesSelected: (List<Int>) -> Unit,
     navToExerciseEditor: () -> Unit,
 ) {
-    val allExercises by viewModel.allExercises.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val selectedExerciseIds by viewModel.selectedExerciseIdsFlow.collectAsState(initial = emptyList())
     var detailItem by remember { mutableStateOf<ExerciseListItem?>(null) }
 
@@ -88,7 +90,7 @@ fun ExercisePickerSheet(
             } else null
         )
     }
-    Column {
+    Column(modifier = Modifier.fillMaxSize()) {
         TopBar(
             title = stringResource(R.string.screen_pick_exercise),
             navigationIcon = {
@@ -105,19 +107,28 @@ fun ExercisePickerSheet(
                 }
             }
         )
-        val searchQuery by viewModel.nameFilter.collectAsState(initial = "")
         SearchBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp, start = 16.dp, end = 16.dp),
-            value = searchQuery,
+            value = uiState.query,
             onValueChange = viewModel::search
         )
+        ExerciseFilterPanel(
+            availableFilters = uiState.availableFilters,
+            selectedFilters = uiState.selectedFilters,
+            onToggle = viewModel::toggleFilter,
+            onClear = viewModel::clearFilters,
+            modifier = Modifier.fillMaxWidth(),
+            initiallyExpanded = false
+        )
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            items(allExercises, key = { it.key }) { item ->
+            items(uiState.items, key = { it.key }) { item ->
                 val checked by viewModel.isSelected(item).collectAsState(initial = false)
                 ExercisePickerListItem(
                     item = item,

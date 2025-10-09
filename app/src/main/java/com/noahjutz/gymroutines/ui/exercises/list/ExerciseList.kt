@@ -47,11 +47,11 @@ import androidx.compose.ui.unit.dp
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.ui.components.Chip
 import com.noahjutz.gymroutines.ui.components.SearchBar
-import com.noahjutz.gymroutines.ui.components.SelectableChip
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailDialog
 import com.noahjutz.gymroutines.ui.exercises.detail.toDetailData
+import com.noahjutz.gymroutines.ui.exercises.components.ExerciseFilterPanel
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.getViewModel
 
@@ -135,35 +135,14 @@ fun ExerciseList(
                 onValueChange = viewModel::setNameFilter
             )
 
-            if (uiState.availableFilters.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    uiState.availableFilters.forEach { filter ->
-                        val selected = filter in uiState.selectedFilters
-                        SelectableChip(
-                            text = filter,
-                            selected = selected,
-                            onClick = { viewModel.toggleFilter(filter) },
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-                }
-
-                if (uiState.selectedFilters.isNotEmpty()) {
-                    TextButton(
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        onClick = viewModel::clearFilters
-                    ) {
-                        Text(stringResource(R.string.btn_clear_filters))
-                    }
-                }
-            }
+            ExerciseFilterPanel(
+                availableFilters = uiState.availableFilters,
+                selectedFilters = uiState.selectedFilters,
+                onToggle = viewModel::toggleFilter,
+                onClear = viewModel::clearFilters,
+                modifier = Modifier.fillMaxWidth(),
+                initiallyExpanded = true
+            )
 
             when {
                 uiState.isLoading -> {

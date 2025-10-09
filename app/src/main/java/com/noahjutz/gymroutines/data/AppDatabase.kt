@@ -40,7 +40,7 @@ import kotlinx.serialization.json.*
         WorkoutSet::class,
         WorkoutSetGroup::class,
     ],
-    version = 46,
+    version = 47,
     autoMigrations = [AutoMigration(from = 35, to = 36)],
     exportSchema = true
 )
@@ -640,6 +640,17 @@ val MIGRATION_45_46 = object : Migration(45, 46) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
             "ALTER TABLE exercise_table ADD COLUMN tags TEXT NOT NULL DEFAULT 'custom'"
+        )
+    }
+}
+
+val MIGRATION_46_47 = object : Migration(46, 47) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE exercise_table ADD COLUMN libraryNotes TEXT NOT NULL DEFAULT ''"
+        )
+        db.execSQL(
+            "UPDATE exercise_table SET libraryNotes = notes WHERE tags LIKE 'library:%'"
         )
     }
 }

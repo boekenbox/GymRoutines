@@ -61,9 +61,12 @@ fun ExerciseLibraryEntry.toExercise(): Exercise {
         }
     }
 
+    val libraryNotes = notesSections.joinToString(separator = "\n\n").trim()
+
     return Exercise(
         name = displayName(),
-        notes = notesSections.joinToString(separator = "\n\n").trim(),
+        notes = "",
+        libraryNotes = libraryNotes,
         logReps = true,
         logWeight = !isBodyweight,
         logTime = false,

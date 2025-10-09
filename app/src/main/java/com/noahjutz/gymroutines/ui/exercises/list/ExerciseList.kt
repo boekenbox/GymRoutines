@@ -68,6 +68,7 @@ fun ExerciseList(
     viewModel: ExerciseListViewModel = getViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     var detailItem by remember { mutableStateOf<ExerciseListItem?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -123,7 +124,7 @@ fun ExerciseList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                value = uiState.query,
+                value = searchQuery,
                 onValueChange = viewModel::setNameFilter
             )
 

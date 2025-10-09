@@ -74,6 +74,7 @@ fun ExercisePickerSheet(
     navToExerciseEditor: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedExerciseIds by viewModel.selectedExerciseIdsFlow.collectAsState(initial = emptyList())
     var detailItem by remember { mutableStateOf<ExerciseListItem?>(null) }
 
@@ -105,7 +106,7 @@ fun ExercisePickerSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp, start = 16.dp, end = 16.dp),
-            value = uiState.query,
+            value = searchQuery,
             onValueChange = viewModel::search
         )
         ExerciseFilterPanel(

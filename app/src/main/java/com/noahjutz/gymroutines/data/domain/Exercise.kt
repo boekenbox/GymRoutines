@@ -27,6 +27,8 @@ data class Exercise(
     var name: String = "",
     @ColumnInfo(defaultValue = "")
     var notes: String = "",
+    @ColumnInfo(defaultValue = "")
+    var libraryNotes: String = "",
     var logReps: Boolean = true,
     var logWeight: Boolean = false,
     var logTime: Boolean = false,

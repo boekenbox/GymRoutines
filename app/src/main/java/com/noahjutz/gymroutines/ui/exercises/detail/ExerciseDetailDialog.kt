@@ -1,13 +1,20 @@
 package com.noahjutz.gymroutines.ui.exercises.detail
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
@@ -22,9 +29,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.Alignment
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.Exercise
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryEntry
@@ -49,24 +59,41 @@ fun ExerciseDetailDialog(
     onSave: (() -> Unit)? = null,
 ) {
     val locale = remember { Locale.getDefault() }
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colors.surface) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                when (data) {
-                    is ExerciseDetailData.Library -> LibraryExerciseDetail(
-                        data = data,
-                        locale = locale,
-                        onEdit = onEdit,
-                        onSave = onSave
-                    )
-                    is ExerciseDetailData.Custom -> CustomExerciseDetail(
-                        exercise = data.exercise,
-                        onEdit = onEdit
-                    )
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colors.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.systemBars)
+            ) {
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(scrollState)
+                        .padding(horizontal = 20.dp, vertical = 24.dp)
+                ) {
+                    when (data) {
+                        is ExerciseDetailData.Library -> LibraryExerciseDetail(
+                            data = data,
+                            locale = locale,
+                            onEdit = onEdit,
+                            onSave = onSave
+                        )
+                        is ExerciseDetailData.Custom -> CustomExerciseDetail(
+                            exercise = data.exercise,
+                            onEdit = onEdit
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
-                    modifier = Modifier.align(Alignment.End),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
                     onClick = onDismiss
                 ) {
                     Text(stringResource(R.string.btn_close))
@@ -94,17 +121,28 @@ private fun LibraryExerciseDetail(
             fontWeight = FontWeight.Bold
         )
         val heroPath = entry.heroAsset?.let { "file:///android_asset/exercise_index/$it" }
+        val context = LocalContext.current
         heroPath?.let { path ->
+            val imageRequest = remember(path) {
+                ImageRequest.Builder(context)
+                    .data(path)
+                    .crossfade(true)
+                    .decoderFactory(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            ImageDecoderDecoder.Factory()
+                        } else {
+                            GifDecoder.Factory()
+                        }
+                    )
+                    .build()
+            }
             Spacer(modifier = Modifier.height(12.dp))
             AsyncImage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
                     .padding(bottom = 4.dp),
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(path)
-                    .crossfade(true)
-                    .build(),
+                model = imageRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
@@ -213,13 +251,26 @@ private fun CustomExerciseDetail(
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
-        if (exercise.notes.isNotBlank()) {
+        val trimmedNotes = remember(exercise.notes, exercise.libraryNotes) {
+            if (exercise.notes == exercise.libraryNotes) "" else exercise.notes
+        }
+        if (trimmedNotes.isNotBlank()) {
             SectionHeader(stringResource(R.string.label_exercise_notes))
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = exercise.notes,
+                text = trimmedNotes,
                 style = MaterialTheme.typography.body2
             )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        if (exercise.libraryNotes.isNotBlank()) {
+            SectionHeader(stringResource(R.string.label_library_details))
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = exercise.libraryNotes,
+                style = MaterialTheme.typography.body2
+            )
+            Spacer(modifier = Modifier.height(12.dp))
         }
         Spacer(modifier = Modifier.height(12.dp))
         SectionHeader(stringResource(R.string.label_tracking_options))

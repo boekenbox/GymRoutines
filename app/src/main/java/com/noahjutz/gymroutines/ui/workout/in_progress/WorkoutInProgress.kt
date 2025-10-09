@@ -403,7 +403,10 @@ private fun WorkoutInProgressContent(
                     }
 
                     if (exercise != null) {
-                        val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
+                        val userNotes = remember(exercise.notes, exercise.libraryNotes) {
+                            if (exercise.notes == exercise.libraryNotes) "" else exercise.notes
+                        }
+                        val trimmedNotes = remember(userNotes) { userNotes.trim() }
                         val hasRestTimers = setGroup.group.restTimerWarmupSeconds > 0 ||
                             setGroup.group.restTimerWorkingSeconds > 0
                         val timerTint = if (hasRestTimers) colors.primary else colors.onSurface.copy(alpha = 0.6f)
@@ -419,12 +422,6 @@ private fun WorkoutInProgressContent(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = stringResource(R.string.label_exercise_notes),
-                                        tint = colors.primary
-                                    )
-                                    Spacer(Modifier.width(12.dp))
                                     Text(
                                         text = trimmedNotes,
                                         style = typography.body2,
@@ -443,7 +440,7 @@ private fun WorkoutInProgressContent(
                                             notesEditorState = ExerciseNotesDialogState(
                                                 exerciseId = exercise.exerciseId,
                                                 name = exercise.name,
-                                                notes = exercise.notes
+                                                notes = userNotes
                                             )
                                         }
                                     ) {
@@ -462,18 +459,18 @@ private fun WorkoutInProgressContent(
                                     .fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                TextButton(
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        notesEditorState = ExerciseNotesDialogState(
-                                            exerciseId = exercise.exerciseId,
-                                            name = exercise.name,
-                                            notes = exercise.notes
-                                        )
-                                    }
-                                ) {
-                                    Icon(imageVector = Icons.Default.Edit, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
+                                    TextButton(
+                                        modifier = Modifier.weight(1f),
+                                        onClick = {
+                                            notesEditorState = ExerciseNotesDialogState(
+                                                exerciseId = exercise.exerciseId,
+                                                name = exercise.name,
+                                                notes = userNotes
+                                            )
+                                        }
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Edit, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
                                     Text(stringResource(R.string.btn_add_notes))
                                 }
                                 Spacer(Modifier.width(4.dp))

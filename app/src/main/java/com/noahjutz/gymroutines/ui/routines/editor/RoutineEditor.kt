@@ -429,7 +429,10 @@ private fun RoutineEditorContent(
                             }
                         }
                     }
-                    val trimmedNotes = remember(exercise.notes) { exercise.notes.trim() }
+                    val userNotes = remember(exercise.notes, exercise.libraryNotes) {
+                        if (exercise.notes == exercise.libraryNotes) "" else exercise.notes
+                    }
+                    val trimmedNotes = remember(userNotes) { userNotes.trim() }
                         if (trimmedNotes.isNotEmpty()) {
                             Surface(
                                 modifier = Modifier
@@ -442,12 +445,6 @@ private fun RoutineEditorContent(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = stringResource(R.string.label_exercise_notes),
-                                    tint = colors.primary
-                                )
-                                Spacer(Modifier.width(12.dp))
                                 Text(
                                     text = trimmedNotes,
                                     style = typography.body2,
@@ -459,7 +456,7 @@ private fun RoutineEditorContent(
                                         notesEditorState = ExerciseNotesDialogState(
                                             exerciseId = exercise.exerciseId,
                                             name = exercise.name,
-                                            notes = exercise.notes
+                                            notes = userNotes
                                         )
                                     }
                                 ) {
@@ -479,7 +476,7 @@ private fun RoutineEditorContent(
                                 notesEditorState = ExerciseNotesDialogState(
                                     exerciseId = exercise.exerciseId,
                                     name = exercise.name,
-                                    notes = exercise.notes
+                                    notes = userNotes
                                 )
                             }
                         ) {

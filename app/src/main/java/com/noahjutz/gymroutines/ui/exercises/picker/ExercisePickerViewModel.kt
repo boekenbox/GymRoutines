@@ -8,7 +8,9 @@ import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
 import com.noahjutz.gymroutines.data.exerciselibrary.displayName
 import com.noahjutz.gymroutines.data.exerciselibrary.libraryTag
 import com.noahjutz.gymroutines.data.exerciselibrary.toExercise
+import com.noahjutz.gymroutines.ui.exercises.list.CUSTOM_FILTER_TAG
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListItem
+import com.noahjutz.gymroutines.ui.exercises.list.formatTag
 import com.noahjutz.gymroutines.ui.exercises.list.isSameLibraryEntry
 import com.noahjutz.gymroutines.ui.exercises.list.matchesQuery
 import com.noahjutz.gymroutines.ui.exercises.list.toCustomListItem
@@ -20,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,6 +36,7 @@ class ExercisePickerViewModel(
     private val query = MutableStateFlow("")
     private val selectedExerciseIds = MutableStateFlow(emptyList<Int>())
     private val selectedLibraryIds = MutableStateFlow(emptySet<String>())
+    private val selectedFilters = MutableStateFlow(setOf<String>())
 
     init {
         viewModelScope.launch { libraryRepository.ensureLoaded() }
@@ -44,13 +46,22 @@ class ExercisePickerViewModel(
         query.value = name
     }
 
-    val nameFilter: Flow<String> = query
+    fun toggleFilter(filter: String) {
+        selectedFilters.update { current ->
+            if (filter in current) current - filter else current + filter
+        }
+    }
 
-    val allExercises = combine(
+    fun clearFilters() {
+        selectedFilters.value = emptySet()
+    }
+
+    val uiState = combine(
         exerciseRepository.exercises,
         libraryRepository.observe(),
-        query
-    ) { exercises, library, queryValue ->
+        query,
+        selectedFilters
+    ) { exercises, library, queryValue, filters ->
         val normalizedQuery = queryValue.trim().lowercase(locale)
         val libraryEntries = library?.entries.orEmpty()
         val libraryById = libraryEntries.associateBy { it.id }
@@ -80,12 +91,34 @@ class ExercisePickerViewModel(
             }
         }
 
-        items
-            .filter { it.matchesQuery(normalizedQuery) }
+        val filteredItems = items
+            .filter { it.matchesQuery(normalizedQuery, filters) }
             .sortedBy { it.sortKey }
+
+        val availableFilters = buildList {
+            add(CUSTOM_FILTER_TAG)
+            library?.metadata?.bodyParts.orEmpty()
+                .map { it.formatTag(locale) }
+                .forEach { tag -> if (tag !in this) add(tag) }
+            library?.metadata?.equipments.orEmpty()
+                .map { it.formatTag(locale) }
+                .forEach { tag -> if (tag !in this) add(tag) }
+        }
+
+        ExercisePickerUiState(
+            isLoading = library == null,
+            query = queryValue,
+            selectedFilters = filters,
+            availableFilters = availableFilters,
+            items = filteredItems
+        )
     }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            ExercisePickerUiState(isLoading = true)
+        )
 
     val selectedExerciseIdsFlow: Flow<List<Int>> = selectedExerciseIds
 
@@ -143,3 +176,11 @@ class ExercisePickerViewModel(
         }
     }
 }
+
+data class ExercisePickerUiState(
+    val isLoading: Boolean = false,
+    val query: String = "",
+    val selectedFilters: Set<String> = emptySet(),
+    val availableFilters: List<String> = emptyList(),
+    val items: List<ExerciseListItem> = emptyList(),
+)

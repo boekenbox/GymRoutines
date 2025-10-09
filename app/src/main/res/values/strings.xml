@@ -42,7 +42,7 @@
     <string name="screen_insights">Insights</string>
     <string name="btn_new_exercise">New Exercise</string>
     <string name="menu_browse_exercise_library">Browse exercise library</string>
-    <string name="btn_add_to_my_exercises">Add to My Exercises</string>
+    <string name="btn_add_to_my_exercises">Save as Custom Exercise</string>
     <string name="hint_exercise_catalog">Browse the built-in library, tap an exercise to preview it, and add it to your list.</string>
     <string name="hint_exercise_catalog_empty">No exercises match your search yet.</string>
     <string name="label_search_suggestions">Suggestions</string>
@@ -74,6 +74,7 @@
     <string name="btn_save">Save</string>
     <string name="label_exercise_name">Exercise name</string>
     <string name="label_exercise_notes">Notes</string>
+    <string name="label_library_details">Library details</string>
     <string name="label_tracking_options">Tracking</string>
     <string name="btn_add_notes">Add notes</string>
     <string name="btn_edit_notes">Edit notes</string>
@@ -83,6 +84,9 @@
     <string name="unnamed_exercise">Unnamed exercise</string>
     <string name="btn_more">More</string>
     <string name="btn_clear_filters">Clear filters</string>
+    <string name="label_filter_options">Filters</string>
+    <string name="filters_show">Show filters</string>
+    <string name="filters_hide">Hide filters</string>
     <string name="btn_delete">Delete</string>
     <string name="dialog_item_set">this set</string>
     <string name="btn_select_option">Select</string>

@@ -3,12 +3,6 @@ package com.noahjutz.gymroutines.data.exerciselibrary
 import com.noahjutz.gymroutines.data.domain.Exercise
 import java.util.Locale
 
-private val bodyweightKeywords = setOf(
-    "body weight",
-    "bodyweight",
-    "no equipment"
-)
-
 private val distanceKeywords = setOf(
     "run",
     "row",
@@ -23,8 +17,6 @@ fun ExerciseLibraryEntry.toExercise(): Exercise {
     val equipments = equipments.map { it.trim() }.filter { it.isNotEmpty() }
     val primaryMuscles = targetMuscles.map { it.trim() }.filter { it.isNotEmpty() }
     val secondaryMuscleList = secondaryMuscles.map { it.trim() }.filter { it.isNotEmpty() }
-    val normalizedEquipments = equipments.map { it.lowercase(Locale.getDefault()) }
-    val isBodyweight = normalizedEquipments.isEmpty() || normalizedEquipments.all { it in bodyweightKeywords }
     val likelyDistance = primaryMuscles.any { muscle ->
         val normalized = muscle.lowercase(Locale.getDefault())
         distanceKeywords.any { keyword -> normalized.contains(keyword) }
@@ -68,7 +60,7 @@ fun ExerciseLibraryEntry.toExercise(): Exercise {
         notes = "",
         libraryNotes = libraryNotes,
         logReps = true,
-        logWeight = !isBodyweight,
+        logWeight = true,
         logTime = false,
         logDistance = likelyDistance,
         hidden = false,

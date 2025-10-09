@@ -79,15 +79,7 @@ fun ExerciseList(
                 onEdit = { exerciseId ->
                     detailItem = null
                     navToExerciseEditor(exerciseId)
-                },
-                onSave = if (item.exerciseId == null && item.entry != null) {
-                    {
-                        viewModel.ensureExercise(item.entry) { id ->
-                            detailItem = null
-                            navToExerciseEditor(id)
-                        }
-                    }
-                } else null
+                }
             )
         }
     }
@@ -177,13 +169,6 @@ fun ExerciseList(
                                                     ?: item.entry?.let { entry ->
                                                         viewModel.ensureExercise(entry) { navToExerciseEditor(it) }
                                                     }
-                                            },
-                                            onEnsure = {
-                                                item.entry?.let { entry ->
-                                                    viewModel.ensureExercise(entry) { id ->
-                                                        navToExerciseEditor(id)
-                                                    }
-                                                }
                                             }
                                         )
                                     }
@@ -212,13 +197,6 @@ fun ExerciseList(
                                         item.entry?.let { entry ->
                                             viewModel.ensureExercise(entry) { navToExerciseEditor(it) }
                                         }
-                                    },
-                                    onEnsure = {
-                                        item.entry?.let { entry ->
-                                            viewModel.ensureExercise(entry) { id ->
-                                                navToExerciseEditor(id)
-                                            }
-                                        }
                                     }
                                 )
                             }
@@ -236,7 +214,6 @@ private fun ExerciseListItemCard(
     item: ExerciseListItem,
     onShowDetail: () -> Unit,
     onEdit: () -> Unit,
-    onEnsure: () -> Unit,
 ) {
     Card(
         modifier = Modifier
@@ -272,14 +249,6 @@ private fun ExerciseListItemCard(
                             modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
                         )
                     }
-                }
-            }
-            if (item.exerciseId == null && item.entry != null) {
-                TextButton(
-                    modifier = Modifier.align(Alignment.End),
-                    onClick = onEnsure
-                ) {
-                    Text(stringResource(R.string.btn_add_to_my_exercises))
                 }
             }
         }

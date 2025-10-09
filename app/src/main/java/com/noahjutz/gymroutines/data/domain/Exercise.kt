@@ -30,7 +30,7 @@ data class Exercise(
     @ColumnInfo(defaultValue = "")
     var libraryNotes: String = "",
     var logReps: Boolean = true,
-    var logWeight: Boolean = false,
+    var logWeight: Boolean = true,
     var logTime: Boolean = false,
     var logDistance: Boolean = false,
     var hidden: Boolean = false,

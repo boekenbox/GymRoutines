@@ -44,16 +44,20 @@ import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.REST_TIMER_CHANNEL_ID
 import com.noahjutz.gymroutines.ui.MainActivity
+import java.util.Calendar
+import java.util.Date
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.Calendar
-import java.util.Date
+import kotlinx.coroutines.runBlocking
 
 private const val REST_TIMER_NOTIFICATION_ID = 1
 private const val MAX_REST_SECONDS = 99 * 60 + 59
@@ -73,7 +77,19 @@ class WorkoutInProgressViewModel(
     private val application: Application,
     private val workoutId: Int,
 ) : ViewModel() {
-    val workout = workoutRepository.getWorkoutFlow(workoutId)
+    private val databaseWorkout = workoutRepository.getWorkoutFlow(workoutId)
+    private val _currentEndTime = MutableStateFlow<Date?>(null)
+    val workout: Flow<WorkoutWithSetGroups?> =
+        combine(databaseWorkout, _currentEndTime) { workout, endTimeOverride ->
+            workout?.let { current ->
+                val effectiveEndTime = endTimeOverride ?: current.workout.endTime
+                if (effectiveEndTime == current.workout.endTime) {
+                    current
+                } else {
+                    current.copy(workout = current.workout.copy(endTime = effectiveEndTime))
+                }
+            }
+        }
     private var _workout: WorkoutWithSetGroups? = null
     private val _restTimerState = MutableStateFlow<RestTimerState?>(null)
     val restTimerState: StateFlow<RestTimerState?> = _restTimerState.asStateFlow()
@@ -90,8 +106,17 @@ class WorkoutInProgressViewModel(
     init {
         viewModelScope.launch {
             launch {
-                workout.collect { workout ->
+                databaseWorkout.collect { workout ->
                     _workout = workout
+                    if (workout == null) {
+                        _currentEndTime.value = null
+                    } else {
+                        val storedEndTime = workout.workout.endTime
+                        val currentEnd = _currentEndTime.value
+                        if (currentEnd == null || storedEndTime.after(currentEnd)) {
+                            _currentEndTime.value = storedEndTime
+                        }
+                    }
                 }
             }
             launch {
@@ -103,9 +128,11 @@ class WorkoutInProgressViewModel(
                             ?: AppPrefs.RestTimerVibration.defaultValue
                 }
             }
-            launch {
-                while (true) {
-                    setEndTime(Calendar.getInstance().time)
+            launch(Dispatchers.Default) {
+                while (isActive) {
+                    if (_workout != null) {
+                        _currentEndTime.value = Calendar.getInstance().time
+                    }
                     delay(1000)
                 }
             }
@@ -403,12 +430,10 @@ class WorkoutInProgressViewModel(
         }
     }
 
-    private fun setEndTime(endTime: Date) {
-        _workout?.workout?.let { workout ->
-            viewModelScope.launch {
-                workoutRepository.update(workout.copy(endTime = endTime))
-            }
-        }
+    private suspend fun persistCurrentEndTimeIfNeeded(forceTime: Date? = null) {
+        val workout = _workout?.workout ?: return
+        val endTime = forceTime ?: _currentEndTime.value ?: Calendar.getInstance().time
+        workoutRepository.update(workout.copy(endTime = endTime))
     }
 
     fun cancelWorkout(onCompletion: () -> Unit) {
@@ -425,12 +450,16 @@ class WorkoutInProgressViewModel(
     fun finishWorkout(onCompletion: () -> Unit) {
         clearRestTimer()
         viewModelScope.launch {
+            val now = Calendar.getInstance().time
+            _currentEndTime.value = now
+            persistCurrentEndTimeIfNeeded(now)
             preferences.edit { it[AppPrefs.CurrentWorkout.key] = -1 }
             onCompletion()
         }
     }
 
     override fun onCleared() {
+        runBlocking { persistCurrentEndTimeIfNeeded(Calendar.getInstance().time) }
         clearRestTimer()
         super.onCleared()
     }

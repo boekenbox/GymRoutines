@@ -117,19 +117,21 @@ fun RoutineEditor(
             )
         }
     ) { paddingValues ->
-        val routine by viewModel.routine.collectAsState(initial = null)
-        Crossfade(routine != null, Modifier.padding(paddingValues)) { isReady ->
-            if (!isReady) {
+        val uiState by viewModel.uiState.collectAsState()
+        Crossfade(
+            targetState = uiState.routineWithSetGroups,
+            modifier = Modifier.padding(paddingValues)
+        ) { routineWithGroups ->
+            if (routineWithGroups == null) {
                 RoutineEditorPlaceholder()
             } else {
-                routine?.let { routine ->
-                    RoutineEditorContent(
-                        routine = routine.routine,
-                        setGroups = routine.setGroups,
-                        viewModel = viewModel,
-                        navToExercisePicker = navToExercisePicker
-                    )
-                }
+                RoutineEditorContent(
+                    routine = routineWithGroups.routine,
+                    setGroups = routineWithGroups.setGroups,
+                    exercisesById = uiState.exercisesById,
+                    viewModel = viewModel,
+                    navToExercisePicker = navToExercisePicker
+                )
             }
         }
     }
@@ -226,6 +228,7 @@ private data class ExerciseNotesDialogState(
 private fun RoutineEditorContent(
     routine: Routine,
     setGroups: List<RoutineSetGroupWithSets>,
+    exercisesById: Map<Int, Exercise>,
     viewModel: RoutineEditorViewModel,
     navToExercisePicker: () -> Unit
 ) {
@@ -335,9 +338,7 @@ private fun RoutineEditorContent(
         }
 
         items(sortedSetGroups, key = { it.group.id }) { setGroup ->
-            val exerciseState = viewModel.getExercise(setGroup.group.exerciseId)
-                .collectAsState(initial = null)
-            val exercise = exerciseState.value ?: return@items
+            val exercise = exercisesById[setGroup.group.exerciseId] ?: return@items
             val headerColor = lerp(colors.surface, colors.primary, 0.18f)
             Card(
                 Modifier

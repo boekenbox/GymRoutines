@@ -24,10 +24,12 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.round
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,121 +43,130 @@ class WorkoutInsightsViewModel(
 
     private val zoneId = ZoneId.systemDefault()
     private val weekFields = WeekFields.ISO
+    private val defaultLocale = Locale.getDefault()
 
-    private val progressMetricFlow = preferences.data.map { prefs ->
-        when (prefs[AppPrefs.InsightsProgressMetric.key] ?: AppPrefs.InsightsProgressMetric.defaultValue) {
-            ExerciseProgressMetric.Load.name -> ExerciseProgressMetric.Load
-            else -> ExerciseProgressMetric.EstimatedOneRm
+    private val progressMetricFlow = preferences.data
+        .map { prefs ->
+            when (prefs[AppPrefs.InsightsProgressMetric.key] ?: AppPrefs.InsightsProgressMetric.defaultValue) {
+                ExerciseProgressMetric.Load.name -> ExerciseProgressMetric.Load
+                else -> ExerciseProgressMetric.EstimatedOneRm
+            }
         }
+        .distinctUntilChanged()
+
+    private val selectedExerciseFlow = preferences.data
+        .map { prefs ->
+            val id = prefs[AppPrefs.InsightsSelectedExercise.key] ?: AppPrefs.InsightsSelectedExercise.defaultValue
+            if (id <= 0) null else id
+        }
+        .distinctUntilChanged()
+
+    private val bodyWeightFlow = preferences.data
+        .map { prefs -> prefs[AppPrefs.BodyWeight.key] ?: AppPrefs.BodyWeight.defaultValue }
+        .distinctUntilChanged()
+
+    private val currentWorkoutFlow = preferences.data
+        .map { prefs -> prefs[AppPrefs.CurrentWorkout.key] ?: AppPrefs.CurrentWorkout.defaultValue }
+        .distinctUntilChanged()
+
+    private val routineNameFlow = routineRepository.routines
+        .map { routines -> routines.associate { it.routineId to it.name } }
+        .distinctUntilChanged()
+
+    private val exerciseNameCacheFlow = exerciseRepository.exercises
+        .map { exercises ->
+            val names = exercises.associate { it.exerciseId to it.name }
+            val normalized = exercises.associate { it.exerciseId to it.name.trim().lowercase(defaultLocale) }
+            ExerciseNameCache(names = names, normalizedNames = normalized)
+        }
+        .distinctUntilChanged()
+
+    private val insightsSourceFlow = combine(
+        workoutRepository.workoutsWithSetGroups,
+        routineNameFlow,
+        exerciseNameCacheFlow,
+    ) { workouts, routineNames, exerciseCache ->
+        InsightsSource(workouts = workouts, routineNames = routineNames, exerciseNameCache = exerciseCache)
     }
 
-    private val selectedExerciseFlow = preferences.data.map { prefs ->
-        val id = prefs[AppPrefs.InsightsSelectedExercise.key] ?: AppPrefs.InsightsSelectedExercise.defaultValue
-        if (id <= 0) null else id
+    private val preferenceSnapshotFlow = combine(
+        progressMetricFlow,
+        selectedExerciseFlow,
+        bodyWeightFlow,
+        currentWorkoutFlow,
+    ) { progressMetric, selectedExerciseId, bodyWeight, currentWorkoutId ->
+        PreferenceSnapshot(
+            progressMetric = progressMetric,
+            selectedExerciseId = selectedExerciseId,
+            bodyWeight = bodyWeight,
+            currentWorkoutId = currentWorkoutId,
+        )
     }
 
-    private val bodyWeightFlow = preferences.data.map { prefs ->
-        prefs[AppPrefs.BodyWeight.key] ?: AppPrefs.BodyWeight.defaultValue
-    }
-
-    private val currentWorkoutFlow = preferences.data.map { prefs ->
-        prefs[AppPrefs.CurrentWorkout.key] ?: AppPrefs.CurrentWorkout.defaultValue
-    }
-
-    private val mutableUiState = MutableStateFlow(WorkoutInsightsUiState())
-    val uiState: StateFlow<WorkoutInsightsUiState> = mutableUiState.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            combine(
-                combine(
-                    workoutRepository.workoutsWithSetGroups,
-                    routineRepository.routines,
-                    exerciseRepository.exercises,
-                    progressMetricFlow,
-                    selectedExerciseFlow,
-                ) { workouts, routines, exercises, progressMetric, selectedExerciseId ->
-                    InsightsSourceData(
-                        workouts = workouts,
-                        routines = routines,
-                        exercises = exercises,
-                        progressMetric = progressMetric,
-                        selectedExerciseId = selectedExerciseId,
-                    )
-                },
-                bodyWeightFlow,
-                currentWorkoutFlow,
-            ) { source, bodyWeight, currentWorkoutId ->
-                val routineNames = source.routines.associateBy({ it.routineId }, { it.name })
-                val exerciseNames = source.exercises.associateBy({ it.exerciseId }, { it.name })
-                val normalizedNames = source.exercises.associateBy({ it.exerciseId }, { it.name.trim().lowercase(Locale.getDefault()) })
-
-                val activeWorkoutId = currentWorkoutId.takeIf { it > 0 }
-                val effectiveBodyWeight = max(bodyWeight.toDouble(), 0.0)
-                val sessions = source.workouts
-                    .filter { activeWorkoutId == null || it.workout.workoutId != activeWorkoutId }
-                    .sortedBy { it.workout.startTime }
-                    .map { session ->
-                        buildSession(
-                            session = session,
-                            routineNames = routineNames,
-                            exerciseNames = exerciseNames,
-                            normalizedNames = normalizedNames,
-                            bodyWeight = effectiveBodyWeight
-                        )
-                    }
-
-                val exerciseProgressData = buildExerciseProgress(sessions)
-                val selectedExercise = when {
-                    exerciseProgressData.exercises.isEmpty() -> null
-                    source.selectedExerciseId != null && exerciseProgressData.exercises.any { it.exerciseId == source.selectedExerciseId } ->
-                        source.selectedExerciseId
-                    else -> exerciseProgressData.exercises.firstOrNull()?.exerciseId
-                }
-
-                val exerciseProgress = exerciseProgressData.copy(
-                    selectedExerciseId = selectedExercise,
-                    metric = source.progressMetric,
-                )
-
-                val prComputation = computePersonalRecords(sessions)
-
-                val weeklyVolume = buildWeeklyVolume(sessions)
-                val sessionComparison = buildSessionComparison(sessions)
-                val consistency = buildConsistency(sessions, weeklyVolume)
-                val routineUtilization = buildRoutineUtilization(sessions)
-                val durationChart = buildDurationChart(sessions)
-                val summary = sessions.lastOrNull()?.let { session ->
-                    SessionSummaryUi(
-                        workoutId = session.workout.workoutId,
-                        routineName = session.routineName,
-                        date = session.date,
-                        totalVolume = session.totalVolume,
-                        totalReps = session.totalReps,
-                        avgLoadPerRep = session.avgLoadPerRep,
-                        durationMinutes = session.durationMinutes,
-                        prCount = prComputation.eventsByWorkout[session.workout.workoutId]?.size ?: 0,
+    val uiState: StateFlow<WorkoutInsightsUiState> =
+        combine(insightsSourceFlow, preferenceSnapshotFlow) { source, preferences ->
+            val activeWorkoutId = preferences.currentWorkoutId.takeIf { it > 0 }
+            val effectiveBodyWeight = max(preferences.bodyWeight.toDouble(), 0.0)
+            val sessions = source.workouts
+                .filter { activeWorkoutId == null || it.workout.workoutId != activeWorkoutId }
+                .sortedBy { it.workout.startTime }
+                .map { session ->
+                    buildSession(
+                        session = session,
+                        routineNames = source.routineNames,
+                        exerciseNameCache = source.exerciseNameCache,
+                        bodyWeight = effectiveBodyWeight,
                     )
                 }
 
-                WorkoutInsightsUiState(
-                    isLoading = false,
-                    durationChart = durationChart,
-                    lastSessionSummary = summary,
-                    weeklyVolume = weeklyVolume,
-                    sessionComparison = sessionComparison,
-                    prs = prComputation.events,
-                    currentPrs = CurrentPrsUi(prComputation.currentByType),
-                    exerciseProgress = exerciseProgress,
-                    consistency = consistency,
-                    routineUtilization = routineUtilization,
+            val exerciseProgressData = buildExerciseProgress(sessions)
+            val selectedExercise = when {
+                exerciseProgressData.exercises.isEmpty() -> null
+                preferences.selectedExerciseId != null &&
+                    exerciseProgressData.exercises.any { it.exerciseId == preferences.selectedExerciseId } ->
+                    preferences.selectedExerciseId
+                else -> exerciseProgressData.exercises.firstOrNull()?.exerciseId
+            }
+
+            val exerciseProgress = exerciseProgressData.copy(
+                selectedExerciseId = selectedExercise,
+                metric = preferences.progressMetric,
+            )
+
+            val prComputation = computePersonalRecords(sessions)
+            val weeklyVolume = buildWeeklyVolume(sessions)
+            val sessionComparison = buildSessionComparison(sessions)
+            val consistency = buildConsistency(sessions, weeklyVolume)
+            val routineUtilization = buildRoutineUtilization(sessions)
+            val durationChart = buildDurationChart(sessions)
+            val summary = sessions.lastOrNull()?.let { session ->
+                SessionSummaryUi(
+                    workoutId = session.workout.workoutId,
+                    routineName = session.routineName,
+                    date = session.date,
+                    totalVolume = session.totalVolume,
+                    totalReps = session.totalReps,
+                    avgLoadPerRep = session.avgLoadPerRep,
+                    durationMinutes = session.durationMinutes,
+                    prCount = prComputation.eventsByWorkout[session.workout.workoutId]?.size ?: 0,
                 )
-            }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, WorkoutInsightsUiState())
-                .collect { state ->
-                    mutableUiState.value = state
-                }
+            }
+
+            WorkoutInsightsUiState(
+                isLoading = false,
+                durationChart = durationChart,
+                lastSessionSummary = summary,
+                weeklyVolume = weeklyVolume,
+                sessionComparison = sessionComparison,
+                prs = prComputation.events,
+                currentPrs = CurrentPrsUi(prComputation.currentByType),
+                exerciseProgress = exerciseProgress,
+                consistency = consistency,
+                routineUtilization = routineUtilization,
+            )
         }
-    }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000), WorkoutInsightsUiState())
 
     fun onProgressMetricChanged(metric: ExerciseProgressMetric) {
         viewModelScope.launch {
@@ -344,8 +355,7 @@ class WorkoutInsightsViewModel(
     private fun buildSession(
         session: WorkoutWithSetGroups,
         routineNames: Map<Int, String>,
-        exerciseNames: Map<Int, String>,
-        normalizedNames: Map<Int, String>,
+        exerciseNameCache: ExerciseNameCache,
         bodyWeight: Double,
     ): SessionComputation {
         val routineName = routineNames[session.workout.routineId] ?: ""
@@ -357,11 +367,13 @@ class WorkoutInsightsViewModel(
         val sortedGroups = session.setGroups.sortedBy { it.group.position }
         val exerciseSummaries = mutableMapOf<Int, ExerciseSummaryBuilder>()
         val sets = mutableListOf<WorkoutSetSample>()
+        val exerciseNames = exerciseNameCache.names
+        val normalizedNames = exerciseNameCache.normalizedNames
 
         sortedGroups.forEach { group ->
             val exerciseId = group.group.exerciseId
             val exerciseName = exerciseNames[exerciseId] ?: "Exercise #$exerciseId"
-            val normalized = normalizedNames[exerciseId] ?: exerciseName.trim().lowercase(Locale.getDefault())
+            val normalized = normalizedNames[exerciseId] ?: exerciseName.trim().lowercase(defaultLocale)
             group.sets.forEach { set ->
                 val normalizedWeight = normalizeWeight(set.weight, bodyWeight)
                 sets += WorkoutSetSample(
@@ -412,12 +424,22 @@ class WorkoutInsightsViewModel(
 
 }
 
-private data class InsightsSourceData(
+private data class ExerciseNameCache(
+    val names: Map<Int, String>,
+    val normalizedNames: Map<Int, String>,
+)
+
+private data class InsightsSource(
     val workouts: List<WorkoutWithSetGroups>,
-    val routines: List<com.noahjutz.gymroutines.data.domain.Routine>,
-    val exercises: List<com.noahjutz.gymroutines.data.domain.Exercise>,
+    val routineNames: Map<Int, String>,
+    val exerciseNameCache: ExerciseNameCache,
+)
+
+private data class PreferenceSnapshot(
     val progressMetric: ExerciseProgressMetric,
     val selectedExerciseId: Int?,
+    val bodyWeight: Float,
+    val currentWorkoutId: Int,
 )
 
 internal const val WEIGHT_EPSILON = 1e-3
@@ -619,8 +641,7 @@ internal fun computePersonalRecords(
     val sortedPerSession = perSession.mapValues { entry ->
         entry.value.sortedByDescending { it.occurredAt }
     }
-    val locale = Locale.getDefault()
-    val nameComparator = compareBy<PrEventUi> { it.exerciseName.lowercase(locale) }
+    val nameComparator = compareBy<PrEventUi> { it.exerciseName.lowercase(Locale.getDefault()) }
     val loadEvents = bestLoadEvents.values.sortedWith(nameComparator)
     val estEvents = bestEstEvents.values.sortedWith(nameComparator)
     val repsEvents = bestRepsEvents.mapNotNull { (_, entries) ->

@@ -96,7 +96,10 @@ val koinModule = module {
     }
 
     viewModel {
-        ExerciseCatalogViewModel(repository = get())
+        ExerciseCatalogViewModel(
+            repository = get(),
+            exerciseRepository = get()
+        )
     }
 
     viewModel {

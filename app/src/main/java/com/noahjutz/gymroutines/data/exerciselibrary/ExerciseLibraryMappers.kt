@@ -22,7 +22,7 @@ private val distanceKeywords = setOf(
 fun ExerciseLibraryEntry.toExercise(): Exercise {
     val equipments = equipments.map { it.trim() }.filter { it.isNotEmpty() }
     val primaryMuscles = targetMuscles.map { it.trim() }.filter { it.isNotEmpty() }
-    val secondaryMuscles = secondaryMuscles.map { it.trim() }.filter { it.isNotEmpty() }
+    val secondaryMuscleList = secondaryMuscles.map { it.trim() }.filter { it.isNotEmpty() }
     val normalizedEquipments = equipments.map { it.lowercase(Locale.getDefault()) }
     val isBodyweight = normalizedEquipments.isEmpty() || normalizedEquipments.all { it in bodyweightKeywords }
     val likelyDistance = primaryMuscles.any { muscle ->
@@ -43,8 +43,8 @@ fun ExerciseLibraryEntry.toExercise(): Exercise {
             if (primaryMuscles.isNotEmpty()) {
                 add("Primary muscles: ${primaryMuscles.joinToString()}")
             }
-            if (secondaryMuscles.isNotEmpty()) {
-                add("Secondary muscles: ${secondaryMuscles.joinToString()}")
+            if (secondaryMuscleList.isNotEmpty()) {
+                add("Secondary muscles: ${secondaryMuscleList.joinToString()}")
             }
             force?.takeIf { it.isNotBlank() }?.let {
                 add("Force: ${it.replaceFirstChar { char -> char.titlecase(Locale.getDefault()) }}")
@@ -62,7 +62,7 @@ fun ExerciseLibraryEntry.toExercise(): Exercise {
     }
 
     return Exercise(
-        name = name.trim(),
+        name = displayName(),
         notes = notesSections.joinToString(separator = "\n\n").trim(),
         logReps = true,
         logWeight = !isBodyweight,
@@ -83,4 +83,20 @@ private fun formatSection(title: String, lines: List<String>): String {
         lines.filter { it.isNotBlank() }
             .forEach { line -> appendLine("\u2022 ${line.trim()}") }
     }.trimEnd()
+}
+
+fun ExerciseLibraryEntry.displayName(locale: Locale = Locale.getDefault()): String {
+    if (name.isBlank()) return name
+    return name.split(Regex("\\s+")).joinToString(" ") { token ->
+        token.split('-')
+            .joinToString("-") { part ->
+                if (part.any { it.isUpperCase() }) {
+                    part
+                } else {
+                    part.lowercase(locale).replaceFirstChar { char ->
+                        if (char.isLowerCase()) char.titlecase(locale) else char.toString()
+                    }
+                }
+            }
+    }
 }

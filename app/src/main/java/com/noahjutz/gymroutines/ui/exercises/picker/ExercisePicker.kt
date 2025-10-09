@@ -20,36 +20,74 @@ package com.noahjutz.gymroutines.ui.exercises.picker
 
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material.*
+import androidx.compose.material.Checkbox
+import androidx.compose.material.Divider
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.ListItem
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.MaterialTheme.colors
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.noahjutz.gymroutines.R
+import com.noahjutz.gymroutines.ui.components.Chip
 import com.noahjutz.gymroutines.ui.components.SearchBar
 import com.noahjutz.gymroutines.ui.components.TopBar
+import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListItem
+import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailDialog
+import com.noahjutz.gymroutines.ui.exercises.detail.toDetailData
 import org.koin.androidx.compose.getViewModel
 
-@ExperimentalMaterialApi
-@ExperimentalAnimationApi
+@OptIn(ExperimentalMaterialApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun ExercisePickerSheet(
     viewModel: ExercisePickerViewModel = getViewModel(),
     onExercisesSelected: (List<Int>) -> Unit,
     navToExerciseEditor: () -> Unit,
 ) {
-    val allExercises by viewModel.allExercises.collectAsState(emptyList())
-    val selectedExerciseIds by viewModel.selectedExerciseIds.collectAsState(initial = emptyList())
+    val allExercises by viewModel.allExercises.collectAsState()
+    val selectedExerciseIds by viewModel.selectedExerciseIdsFlow.collectAsState(initial = emptyList())
+    var detailItem by remember { mutableStateOf<ExerciseListItem?>(null) }
+
+    detailItem?.toDetailData()?.let { data ->
+        ExerciseDetailDialog(
+            data = data,
+            onDismiss = { detailItem = null },
+            onEdit = null,
+            onSave = if (detailItem?.exerciseId == null && detailItem?.entry != null) {
+                {
+                    detailItem?.let { viewModel.onSelectionChanged(it, true) }
+                    detailItem = null
+                }
+            } else null
+        )
+    }
     Column {
         TopBar(
             title = stringResource(R.string.screen_pick_exercise),
@@ -67,7 +105,7 @@ fun ExercisePickerSheet(
                 }
             }
         )
-        val searchQuery by viewModel.nameFilter.collectAsState()
+        val searchQuery by viewModel.nameFilter.collectAsState(initial = "")
         SearchBar(
             modifier = Modifier
                 .fillMaxWidth()
@@ -75,22 +113,21 @@ fun ExercisePickerSheet(
             value = searchQuery,
             onValueChange = viewModel::search
         )
-        LazyColumn(Modifier.weight(1f)) {
-            items(allExercises) { exercise ->
-                val checked by viewModel.exercisesContains(exercise)
-                    .collectAsState(initial = false)
-                ListItem(
-                    Modifier.toggleable(
-                        value = checked,
-                        onValueChange = {
-                            if (it) viewModel.addExercise(exercise)
-                            else viewModel.removeExercise(exercise)
-                        }
-                    ),
-                    icon = { Checkbox(checked = checked, onCheckedChange = null) },
-                ) {
-                    Text(exercise.name)
-                }
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            items(allExercises, key = { it.key }) { item ->
+                val checked by viewModel.isSelected(item).collectAsState(initial = false)
+                ExercisePickerListItem(
+                    item = item,
+                    checked = checked,
+                    onCheckedChange = { selected ->
+                        viewModel.onSelectionChanged(item, selected)
+                    },
+                    onPreview = { detailItem = item }
+                )
+                Divider()
             }
 
             item {
@@ -105,6 +142,65 @@ fun ExercisePickerSheet(
                     },
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun ExercisePickerListItem(
+    item: ExerciseListItem,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onPreview: () -> Unit,
+) {
+    ListItem(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, onValueChange = onCheckedChange),
+        icon = { Checkbox(checked = checked, onCheckedChange = null) },
+        trailing = {
+            IconButton(onClick = onPreview) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = stringResource(R.string.btn_view_details)
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.subtitle1
+                )
+                item.subtitle?.let { subtitle ->
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.body2,
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+                if (item.chips.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TagRow(tags = item.chips)
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagRow(tags: List<String>) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        tags.forEach { tag ->
+            Chip(
+                text = tag,
+                modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+            )
         }
     }
 }

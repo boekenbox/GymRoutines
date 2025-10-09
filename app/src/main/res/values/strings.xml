@@ -31,6 +31,7 @@
     <string name="checkbox_log_weight">Log Weight</string>
     <string name="checkbox_log_time">Log Time</string>
     <string name="checkbox_log_distance">Log Distance</string>
+    <string name="checkbox_update_routine">Update routine</string>
     <string name="screen_routine_list">Routines</string>
     <string name="screen_exercise_list">Exercises</string>
     <string name="screen_exercise_catalog">Exercise library</string>
@@ -73,11 +74,15 @@
     <string name="btn_save">Save</string>
     <string name="label_exercise_name">Exercise name</string>
     <string name="label_exercise_notes">Notes</string>
+    <string name="label_tracking_options">Tracking</string>
     <string name="btn_add_notes">Add notes</string>
     <string name="btn_edit_notes">Edit notes</string>
+    <string name="btn_edit_exercise">Edit exercise</string>
+    <string name="btn_view_details">View details</string>
     <string name="dialog_title_edit_notes">Edit notes for %1$s</string>
     <string name="unnamed_exercise">Unnamed exercise</string>
     <string name="btn_more">More</string>
+    <string name="btn_clear_filters">Clear filters</string>
     <string name="btn_delete">Delete</string>
     <string name="dialog_item_set">this set</string>
     <string name="btn_select_option">Select</string>
@@ -198,6 +203,9 @@
     <string name="rest_timer_indicator_working">Set rest</string>
     <string name="rest_timer_minus_30">-30s</string>
     <string name="rest_timer_plus_30">+30s</string>
+    <string name="hint_exercise_list_empty_title">No exercises yet</string>
+    <string name="hint_exercise_list_empty_body">Browse the tags or use the search to find a movement. You can always create your own exercise, too!</string>
+    <string name="hint_exercise_tracking_none">No metrics are tracked for this exercise.</string>
     <string name="rest_timer_plus_minute">+1:00</string>
     <string name="rest_timer_notification_running_title">Rest timer</string>
     <string name="rest_timer_notification_running_body">%1$s • %2$s remaining</string>

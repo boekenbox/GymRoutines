@@ -21,7 +21,6 @@ package com.noahjutz.gymroutines.di
 import androidx.room.Room
 import com.noahjutz.gymroutines.data.*
 import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
-import com.noahjutz.gymroutines.ui.exercises.catalog.ExerciseCatalogViewModel
 import com.noahjutz.gymroutines.ui.exercises.editor.ExerciseEditorViewModel
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListViewModel
 import com.noahjutz.gymroutines.ui.exercises.picker.ExercisePickerViewModel
@@ -96,18 +95,11 @@ val koinModule = module {
     }
 
     viewModel {
-        ExerciseCatalogViewModel(
-            repository = get(),
-            exerciseRepository = get()
-        )
+        ExerciseListViewModel(get(), get())
     }
 
     viewModel {
-        ExerciseListViewModel(get())
-    }
-
-    viewModel {
-        ExercisePickerViewModel(exerciseRepository = get())
+        ExercisePickerViewModel(exerciseRepository = get(), libraryRepository = get())
     }
 
     viewModel { params ->

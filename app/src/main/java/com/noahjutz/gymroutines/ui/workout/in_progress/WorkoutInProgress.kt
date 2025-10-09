@@ -72,9 +72,11 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.rememberDismissState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +93,7 @@ import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
 import com.noahjutz.gymroutines.data.domain.duration
+import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
 import com.noahjutz.gymroutines.ui.components.EditExerciseNotesDialog
 import com.noahjutz.gymroutines.ui.components.RestTimerDialog
@@ -99,13 +102,18 @@ import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
+import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailData
+import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailDialog
+import com.noahjutz.gymroutines.ui.exercises.detail.resolveExerciseDetail
 import com.noahjutz.gymroutines.util.RegexPatterns
 import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.pretty
 import com.noahjutz.gymroutines.util.toStringOrBlank
 import org.koin.androidx.compose.getViewModel
+import org.koin.androidx.compose.get
 import org.koin.core.parameter.parametersOf
+import kotlinx.coroutines.launch
 
 @ExperimentalFoundationApi
 @ExperimentalAnimationApi
@@ -234,6 +242,13 @@ private fun WorkoutInProgressContent(
         )
     }
 
+    val libraryRepository: ExerciseLibraryRepository = get()
+    val coroutineScope = rememberCoroutineScope()
+    var detailDialog by remember { mutableStateOf<ExerciseDetailData?>(null) }
+    detailDialog?.let { data ->
+        ExerciseDetailDialog(data = data, onDismiss = { detailDialog = null })
+    }
+
     val sortedSetGroups by remember(workout.setGroups) {
         derivedStateOf { workout.setGroups.sortedBy { it.group.position } }
     }
@@ -320,6 +335,22 @@ private fun WorkoutInProgressContent(
                                 ),
                                 modifier = Modifier.weight(1f)
                             )
+
+                            IconButton(
+                                onClick = {
+                                    exercise?.let { current ->
+                                        coroutineScope.launch {
+                                            detailDialog = resolveExerciseDetail(current, libraryRepository)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Info,
+                                    contentDescription = stringResource(R.string.btn_view_details),
+                                    tint = contentColorFor(headerColor)
+                                )
+                            }
 
                             Box {
                                 var expanded by remember { mutableStateOf(false) }

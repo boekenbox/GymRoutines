@@ -1,236 +1,342 @@
-/*
- * Splitfit
- * Copyright (C) 2020  Noah Jutz
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.noahjutz.gymroutines.ui.exercises.list
 
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.*
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Card
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.MaterialTheme.colors
+import androidx.compose.material.Scaffold
+import androidx.compose.material.SwipeToDismiss
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
+import androidx.compose.material.rememberDismissState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import com.noahjutz.gymroutines.R
-import com.noahjutz.gymroutines.data.domain.Exercise
+import com.noahjutz.gymroutines.ui.components.Chip
 import com.noahjutz.gymroutines.ui.components.SearchBar
+import com.noahjutz.gymroutines.ui.components.SelectableChip
 import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
+import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailDialog
+import com.noahjutz.gymroutines.ui.exercises.detail.toDetailData
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.getViewModel
 
-@OptIn(ExperimentalFoundationApi::class)
-@ExperimentalAnimationApi
-@ExperimentalMaterialApi
+@OptIn(
+    ExperimentalMaterialApi::class,
+    ExperimentalAnimationApi::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalFoundationApi::class
+)
 @Composable
 fun ExerciseList(
     navToExerciseEditor: (Int) -> Unit,
     navToSettings: () -> Unit,
-    navToExerciseCatalog: () -> Unit,
     viewModel: ExerciseListViewModel = getViewModel(),
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+    var detailItem by remember { mutableStateOf<ExerciseListItem?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    detailItem?.let { item ->
+        item.toDetailData()?.let { data ->
+            ExerciseDetailDialog(
+                data = data,
+                onDismiss = { detailItem = null },
+                onEdit = { exerciseId ->
+                    detailItem = null
+                    navToExerciseEditor(exerciseId)
+                },
+                onSave = if (item.exerciseId == null && item.entry != null) {
+                    {
+                        viewModel.ensureExercise(item.entry) { id ->
+                            detailItem = null
+                            navToExerciseEditor(id)
+                        }
+                    }
+                } else null
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopBar(
                 title = stringResource(R.string.screen_exercise_list),
                 actions = {
-                    Box {
-                        var expanded by remember { mutableStateOf(false) }
-                        IconButton(onClick = { expanded = !expanded }) {
-                            Icon(Icons.Default.MoreVert, stringResource(R.string.btn_more))
-                        }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                onClick = {
-                                    expanded = false
-                                    navToExerciseCatalog()
-                                }
-                            ) {
-                                Text(stringResource(R.string.menu_browse_exercise_library))
-                            }
-                            DropdownMenuItem(
-                                onClick = {
-                                    expanded = false
-                                    navToSettings()
-                                }
-                            ) {
-                                Text("Settings")
-                            }
-                        }
+                    IconButton(onClick = navToSettings) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.screen_settings)
+                    )
                     }
                 }
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
+            androidx.compose.material.ExtendedFloatingActionButton(
+                modifier = Modifier.padding(bottom = 8.dp),
                 onClick = { navToExerciseEditor(-1) },
-                icon = { Icon(Icons.Default.Add, null) },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null
+                    )
+                },
                 text = { Text(stringResource(R.string.btn_new_exercise)) },
-                shape = MaterialTheme.shapes.large,
-                backgroundColor = MaterialTheme.colors.secondary,
-                contentColor = MaterialTheme.colors.onSecondary,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 4.dp,
-                    pressedElevation = 8.dp
-                )
+                backgroundColor = colors.secondary,
+                contentColor = colors.onSecondary
             )
-        },
+        }
     ) { paddingValues ->
-        val exercises by viewModel.exercises.collectAsState()
-
-        Box(
+        Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            val exerciseList = exercises
-            if (exerciseList == null) {
-                ExerciseListPlaceholder()
-            } else {
-                ExerciseListContent(
-                    navToExerciseEditor = navToExerciseEditor,
-                    exercises = exerciseList,
-                    viewModel = viewModel
-                )
+            SearchBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                value = uiState.query,
+                onValueChange = viewModel::setNameFilter
+            )
+
+            if (uiState.availableFilters.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.availableFilters.forEach { filter ->
+                        val selected = filter in uiState.selectedFilters
+                        SelectableChip(
+                            text = filter,
+                            selected = selected,
+                            onClick = { viewModel.toggleFilter(filter) },
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+
+                if (uiState.selectedFilters.isNotEmpty()) {
+                    TextButton(
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        onClick = viewModel::clearFilters
+                    ) {
+                        Text(stringResource(R.string.btn_clear_filters))
+                    }
+                }
+            }
+
+            when {
+                uiState.isLoading -> {
+                    ExerciseListPlaceholder()
+                }
+                uiState.items.isEmpty() -> {
+                    EmptyExerciseListState()
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 72.dp)
+                    ) {
+                        items(uiState.items, key = { it.key }) { item ->
+                            val exercise = item.exercise
+                            val dismissState = rememberDismissState()
+
+                            val canDelete = exercise != null
+                            if (canDelete) {
+                                SwipeToDismiss(
+                                    state = dismissState,
+                                    background = { SwipeToDeleteBackground(dismissState) },
+                                    dismissThresholds = { androidx.compose.material.FractionalThreshold(0.4f) },
+                                    dismissContent = {
+                                        ExerciseListItemCard(
+                                            item = item,
+                                            onShowDetail = {
+                                                detailItem = item
+                                            },
+                                            onEdit = {
+                                                exercise?.let { navToExerciseEditor(it.exerciseId) }
+                                                    ?: item.entry?.let { entry ->
+                                                        viewModel.ensureExercise(entry) { navToExerciseEditor(it) }
+                                                    }
+                                            },
+                                            onEnsure = {
+                                                item.entry?.let { entry ->
+                                                    viewModel.ensureExercise(entry) { id ->
+                                                        navToExerciseEditor(id)
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                                )
+
+                                if (dismissState.targetValue != androidx.compose.material.DismissValue.Default) {
+                                    ConfirmDeleteExerciseDialog(
+                                        exerciseName = exercise?.name.orEmpty().ifBlank {
+                                            stringResource(R.string.unnamed_exercise)
+                                        },
+                                        onDismiss = {
+                                            coroutineScope.launch { dismissState.reset() }
+                                        },
+                                        onConfirm = {
+                                            viewModel.delete(exercise!!)
+                                        }
+                                    )
+                                }
+                            } else {
+                                ExerciseListItemCard(
+                                    item = item,
+                                    onShowDetail = {
+                                        detailItem = item
+                                    },
+                                    onEdit = {
+                                        item.entry?.let { entry ->
+                                            viewModel.ensureExercise(entry) { navToExerciseEditor(it) }
+                                        }
+                                    },
+                                    onEnsure = {
+                                        item.entry?.let { entry ->
+                                            viewModel.ensureExercise(entry) { id ->
+                                                navToExerciseEditor(id)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@ExperimentalFoundationApi
-@ExperimentalMaterialApi
-@ExperimentalAnimationApi
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ExerciseListContent(
-    exercises: List<Exercise>,
-    navToExerciseEditor: (Int) -> Unit,
-    viewModel: ExerciseListViewModel
+private fun ExerciseListItemCard(
+    item: ExerciseListItem,
+    onShowDetail: () -> Unit,
+    onEdit: () -> Unit,
+    onEnsure: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val searchQuery by viewModel.nameFilter.collectAsState()
-
-    LazyColumn(
-        modifier = Modifier.fillMaxHeight(),
-        contentPadding = PaddingValues(vertical = 8.dp)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable(onClick = onShowDetail),
+        shape = MaterialTheme.shapes.medium,
+        elevation = 4.dp
     ) {
-        item {
-            SearchBar(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .fillMaxWidth(),
-                value = searchQuery,
-                onValueChange = viewModel::setNameFilter
+        Column(modifier = Modifier.padding(16.dp)) {
+            RowWithActions(
+                title = item.title.ifBlank { stringResource(R.string.unnamed_exercise) },
+                onInfo = onShowDetail,
+                onEdit = onEdit,
+                canEdit = item.exerciseId != null || item.entry != null
             )
-        }
-
-        items(
-            items = exercises,
-            key = { it.exerciseId },
-            contentType = { "exercise" }
-        ) { exercise ->
-            val dismissState = rememberDismissState()
-
-            SwipeToDismiss(
-                modifier = Modifier
-                    .animateItemPlacement()
-                    .zIndex(if (dismissState.offset.value == 0f) 0f else 1f),
-                state = dismissState,
-                background = { SwipeToDeleteBackground(dismissState) }
-            ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    elevation = animateDpAsState(
-                        if (dismissState.dismissDirection != null) 6.dp else 2.dp
-                    ).value
-                ) {
-                    ListItem(
-                        modifier = Modifier
-                            .clickable { navToExerciseEditor(exercise.exerciseId) }
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        icon = null,
-                        secondaryText = null,
-                        overlineText = null,
-                        singleLineSecondaryText = true,
-                        text = {
-                            Text(
-                                text = exercise.name,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.subtitle1.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        },
-                        trailing = {
-                            Box {
-                                var expanded by remember { mutableStateOf(false) }
-                                IconButton(onClick = { expanded = !expanded }) {
-                                    Icon(Icons.Default.MoreVert, null)
-                                }
-                                DropdownMenu(
-                                    expanded = expanded,
-                                    onDismissRequest = { expanded = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        onClick = {
-                                            expanded = false
-                                            scope.launch {
-                                                dismissState.dismiss(DismissDirection.StartToEnd)
-                                            }
-                                        }
-                                    ) {
-                                        Text(stringResource(R.string.btn_delete))
-                                    }
-                                }
-                            }
-                        }
-                    )
-                }
-            }
-
-            if (dismissState.targetValue != DismissValue.Default) {
-                ConfirmDeleteExerciseDialog(
-                    onDismiss = { scope.launch { dismissState.reset() } },
-                    exerciseName = exercise.name,
-                    onConfirm = { viewModel.delete(exercise) },
+            item.subtitle?.let { subtitle ->
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
+            if (item.chips.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier.padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item.chips.forEach { chip ->
+                        Chip(
+                            text = chip,
+                            modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                        )
+                    }
+                }
+            }
+            if (item.exerciseId == null && item.entry != null) {
+                TextButton(
+                    modifier = Modifier.align(Alignment.End),
+                    onClick = onEnsure
+                ) {
+                    Text(stringResource(R.string.btn_add_to_my_exercises))
+                }
+            }
         }
-        item {
-            // Fix FAB overlap
-            Spacer(Modifier.height(56.dp))
+    }
+}
+
+@Composable
+private fun RowWithActions(
+    title: String,
+    onInfo: () -> Unit,
+    onEdit: () -> Unit,
+    canEdit: Boolean,
+) {
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.subtitle1.copy(fontWeight = FontWeight.SemiBold),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onInfo) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = stringResource(R.string.btn_view_details)
+            )
+        }
+        if (canEdit) {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.btn_edit_exercise)
+                )
+            }
         }
     }
 }
@@ -242,23 +348,44 @@ private fun ConfirmDeleteExerciseDialog(
     onConfirm: () -> Unit,
 ) {
     AlertDialog(
+        onDismissRequest = onDismiss,
         title = {
-            Text(
-                stringResource(R.string.dialog_title_delete, exerciseName)
-            )
+            Text(stringResource(R.string.dialog_title_delete, exerciseName))
         },
         confirmButton = {
-            Button(
-                onClick = onConfirm,
-                content = { Text(stringResource(R.string.btn_delete)) }
-            )
+            androidx.compose.material.Button(onClick = onConfirm) {
+                Text(stringResource(R.string.btn_delete))
+            }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                content = { Text(stringResource(R.string.btn_cancel)) }
-            )
-        },
-        onDismissRequest = onDismiss,
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        }
     )
 }
+
+@Composable
+private fun EmptyExerciseListState() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = stringResource(R.string.hint_exercise_list_empty_title),
+            style = MaterialTheme.typography.h6,
+            color = MaterialTheme.colors.onSurface
+        )
+        Spacer(modifier = Modifier.size(12.dp))
+        Text(
+            text = stringResource(R.string.hint_exercise_list_empty_body),
+            style = MaterialTheme.typography.body2,
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+

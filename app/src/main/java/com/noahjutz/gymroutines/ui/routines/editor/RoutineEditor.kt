@@ -31,7 +31,9 @@ import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.noahjutz.gymroutines.R
+import com.noahjutz.gymroutines.data.domain.Exercise
 import com.noahjutz.gymroutines.data.domain.Routine
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroupWithSets
 import com.noahjutz.gymroutines.ui.components.AutoSelectTextField
@@ -54,11 +57,16 @@ import com.noahjutz.gymroutines.ui.components.SwipeToDeleteBackground
 import com.noahjutz.gymroutines.ui.components.TopBar
 import com.noahjutz.gymroutines.ui.components.WarmupIndicatorWidth
 import com.noahjutz.gymroutines.ui.components.durationVisualTransformation
+import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
+import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailData
+import com.noahjutz.gymroutines.ui.exercises.detail.ExerciseDetailDialog
+import com.noahjutz.gymroutines.ui.exercises.detail.resolveExerciseDetail
 import com.noahjutz.gymroutines.util.RegexPatterns
 import com.noahjutz.gymroutines.util.formatRestDuration
 import com.noahjutz.gymroutines.util.formatSimple
 import com.noahjutz.gymroutines.util.toStringOrBlank
 import org.koin.androidx.compose.getViewModel
+import org.koin.androidx.compose.get
 import org.koin.core.parameter.parametersOf
 import kotlinx.coroutines.launch
 
@@ -212,6 +220,7 @@ private data class ExerciseNotesDialogState(
     val notes: String,
 )
 
+
 @OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun RoutineEditorContent(
@@ -252,6 +261,13 @@ private fun RoutineEditorContent(
                 restTimerEditorGroup = null
             }
         )
+    }
+
+    val libraryRepository: ExerciseLibraryRepository = get()
+    val coroutineScope = rememberCoroutineScope()
+    var detailDialog by remember { mutableStateOf<ExerciseDetailData?>(null) }
+    detailDialog?.let { data ->
+        ExerciseDetailDialog(data = data, onDismiss = { detailDialog = null })
     }
 
     LazyColumn(
@@ -352,6 +368,17 @@ private fun RoutineEditorContent(
                                     .padding(horizontal = 16.dp, vertical = 10.dp)
                                     .weight(1f)
                             )
+
+                            IconButton(onClick = {
+                                coroutineScope.launch {
+                                    detailDialog = resolveExerciseDetail(exercise, libraryRepository)
+                                }
+                            }) {
+                                Icon(
+                                    Icons.Default.Info,
+                                    contentDescription = stringResource(R.string.btn_view_details)
+                                )
+                            }
 
                             Box {
                                 var expanded by remember { mutableStateOf(false) }

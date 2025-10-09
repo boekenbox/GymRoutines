@@ -42,6 +42,10 @@ class ExerciseRepository(private val exerciseDao: ExerciseDao) {
     suspend fun getExercise(id: Int): Exercise? {
         return exerciseDao.getExercise(id)
     }
+
+    suspend fun getExerciseByTag(tag: String): Exercise? {
+        return exerciseDao.getExerciseByTag(tag)
+    }
 }
 
 class RoutineRepository(private val routineDao: RoutineDao) {

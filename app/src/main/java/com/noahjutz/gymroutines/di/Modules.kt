@@ -20,6 +20,8 @@ package com.noahjutz.gymroutines.di
 
 import androidx.room.Room
 import com.noahjutz.gymroutines.data.*
+import com.noahjutz.gymroutines.data.exerciselibrary.ExerciseLibraryRepository
+import com.noahjutz.gymroutines.ui.exercises.catalog.ExerciseCatalogViewModel
 import com.noahjutz.gymroutines.ui.exercises.editor.ExerciseEditorViewModel
 import com.noahjutz.gymroutines.ui.exercises.list.ExerciseListViewModel
 import com.noahjutz.gymroutines.ui.exercises.picker.ExercisePickerViewModel
@@ -52,6 +54,7 @@ val koinModule = module {
                 MIGRATION_42_43,
                 MIGRATION_43_44,
                 MIGRATION_44_45,
+                MIGRATION_45_46,
             )
             .build()
     }
@@ -84,8 +87,16 @@ val koinModule = module {
         ExerciseRepository(exerciseDao = get())
     }
 
+    single {
+        ExerciseLibraryRepository(androidContext())
+    }
+
     viewModel {
         RoutineListViewModel(get())
+    }
+
+    viewModel {
+        ExerciseCatalogViewModel(repository = get())
     }
 
     viewModel {

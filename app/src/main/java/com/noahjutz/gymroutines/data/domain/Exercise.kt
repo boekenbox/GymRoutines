@@ -32,6 +32,8 @@ data class Exercise(
     var logTime: Boolean = false,
     var logDistance: Boolean = false,
     var hidden: Boolean = false,
+    @ColumnInfo(defaultValue = "custom")
+    var tags: String = "custom",
 
     @PrimaryKey(autoGenerate = true)
     val exerciseId: Int = 0

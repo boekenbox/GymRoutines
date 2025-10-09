@@ -55,7 +55,9 @@ class ExerciseLibraryRepository(
     ): ExerciseSearchResult {
         val library = ensureLoaded()
         val searchEngine = engine ?: ExerciseSearchEngine(library.entries).also { engine = it }
-        return searchEngine.search(query, filters, sort)
+        return withContext(Dispatchers.Default) {
+            searchEngine.search(query, filters, sort)
+        }
     }
 
     suspend fun getExercise(id: String): ExerciseLibraryEntry? {

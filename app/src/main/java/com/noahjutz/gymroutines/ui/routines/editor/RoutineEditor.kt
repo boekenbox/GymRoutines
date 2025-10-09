@@ -101,8 +101,8 @@ fun RoutineEditor(
                     },
                     icon = { Icon(Icons.Default.PlayArrow, null) },
                     text = { Text(stringResource(R.string.btn_start_workout)) },
-                    backgroundColor = colors.secondary,
-                    contentColor = colors.onSecondary
+                    backgroundColor = colors.primary,
+                    contentColor = colors.onPrimary
                 )
             }
         },

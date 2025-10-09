@@ -109,8 +109,8 @@ fun ExerciseList(
                     )
                 },
                 text = { Text(stringResource(R.string.btn_new_exercise)) },
-                backgroundColor = colors.secondary,
-                contentColor = colors.onSecondary
+                backgroundColor = colors.primary,
+                contentColor = colors.onPrimary
             )
         }
     ) { paddingValues ->

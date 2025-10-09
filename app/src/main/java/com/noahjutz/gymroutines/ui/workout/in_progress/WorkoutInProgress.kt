@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
@@ -85,9 +86,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.noahjutz.gymroutines.R
 import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroupWithSets
@@ -162,6 +167,8 @@ fun WorkoutInProgress(
         }
     }
 }
+
+
 
 private data class ExerciseNotesDialogState(
     val exerciseId: Int,
@@ -266,45 +273,54 @@ private fun WorkoutInProgressContent(
         )
     }
 
-    LazyColumn(
+    val backgroundColor = colors.background
+    val primaryColor = colors.primary
+    val headerBrush = remember(backgroundColor, primaryColor) {
+        Brush.verticalGradient(
+            listOf(
+                backgroundColor,
+                lerp(backgroundColor, primaryColor.copy(alpha = 0.08f), 0.9f)
+            )
+        )
+    }
+    Box(
         modifier = Modifier
-            .fillMaxHeight()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .fillMaxSize()
+            .background(headerBrush)
     ) {
-        item {
-            val routineNameBackground = lerp(colors.surface, colors.primary, 0.12f)
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                color = routineNameBackground,
-                shape = MaterialTheme.shapes.large,
-                elevation = 0.dp
-            ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        ) {
+            item {
                 val routineName by viewModel.routineName.collectAsState("")
-                Text(
-                    text = routineName,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-                    style = typography.h6.copy(fontWeight = FontWeight.SemiBold),
+                val totalExercises = remember(sortedSetGroups) { sortedSetGroups.size }
+                val totalSets = remember(sortedSetGroups) { sortedSetGroups.sumOf { it.sets.size } }
+                val completedSets = remember(sortedSetGroups) {
+                    sortedSetGroups.sumOf { setGroup -> setGroup.sets.count { it.complete } }
+                }
+                WorkoutInProgressHeader(
+                    routineName = routineName,
+                    duration = workout.workout.duration.pretty(),
+                    totalExercises = totalExercises,
+                    totalSets = totalSets,
+                    completedSets = completedSets
                 )
             }
-            Text(
-                workout.workout.duration.pretty(),
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 4.dp),
-                style = typography.subtitle2.copy(
-                    textAlign = TextAlign.Center,
-                    color = colors.onSurface.copy(alpha = 0.75f)
-                )
-            )
-        }
 
         items(sortedSetGroups, key = { it.group.id }) { setGroup ->
             val exerciseState = viewModel.getExercise(setGroup.group.exerciseId)
                 .collectAsState(initial = null)
             val exercise = exerciseState.value
-            val headerColor = lerp(colors.surface, colors.primary, 0.24f)
+            val groupPrimary = colors.primary
+            val groupPrimaryVariant = colors.primaryVariant
+            val headerBrush = remember(groupPrimary, groupPrimaryVariant) {
+                Brush.horizontalGradient(
+                    listOf(groupPrimary, groupPrimaryVariant)
+                )
+            }
+            val headerShape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp, bottomStart = 0.dp, bottomEnd = 0.dp)
             Card(
                 Modifier
                     .fillMaxWidth()
@@ -313,28 +329,38 @@ private fun WorkoutInProgressContent(
                 shape = MaterialTheme.shapes.large,
             ) {
                 Column {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = headerColor,
-                        shape = MaterialTheme.shapes.large
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(headerBrush, headerShape)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val exerciseName = when {
                                 exercise?.name.isNullOrBlank() -> stringResource(R.string.unnamed_exercise)
                                 else -> exercise!!.name
                             }
-                            Text(
-                                exerciseName,
-                                style = typography.h6.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = contentColorFor(headerColor)
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    exerciseName,
+                                    style = typography.h6.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colors.onPrimary
+                                    )
+                                )
+                                exercise?.libraryNotes?.takeIf { it.isNotBlank() }?.let { libraryNotes ->
+                                    Text(
+                                        text = libraryNotes,
+                                        style = typography.caption.copy(color = MaterialTheme.colors.onPrimary.copy(alpha = 0.8f)),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
 
                             IconButton(
                                 onClick = {
@@ -348,19 +374,17 @@ private fun WorkoutInProgressContent(
                                 Icon(
                                     Icons.Default.Info,
                                     contentDescription = stringResource(R.string.btn_view_details),
-                                    tint = contentColorFor(headerColor)
+                                    tint = MaterialTheme.colors.onPrimary
                                 )
                             }
 
                             Box {
                                 var expanded by remember { mutableStateOf(false) }
-                                IconButton(
-                                    onClick = { expanded = !expanded }
-                                ) {
+                                IconButton(onClick = { expanded = !expanded }) {
                                     Icon(
                                         Icons.Default.DragHandle,
                                         stringResource(R.string.drag_handle),
-                                        tint = contentColorFor(headerColor)
+                                        tint = MaterialTheme.colors.onPrimary
                                     )
                                 }
                                 DropdownMenu(
@@ -410,12 +434,13 @@ private fun WorkoutInProgressContent(
                         val hasRestTimers = setGroup.group.restTimerWarmupSeconds > 0 ||
                             setGroup.group.restTimerWorkingSeconds > 0
                         val timerTint = if (hasRestTimers) colors.primary else colors.onSurface.copy(alpha = 0.6f)
+                        val actionBackground = colors.onSurface.copy(alpha = 0.06f)
                         if (trimmedNotes.isNotEmpty()) {
                             Surface(
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 6.dp)
                                     .fillMaxWidth(),
-                                color = colors.primary.copy(alpha = 0.08f),
+                                color = colors.onSurface.copy(alpha = 0.04f),
                                 shape = MaterialTheme.shapes.medium
                             ) {
                                 Row(
@@ -428,28 +453,26 @@ private fun WorkoutInProgressContent(
                                         color = colors.onSurface.copy(alpha = 0.9f),
                                         modifier = Modifier.weight(1f)
                                     )
-                                    IconButton(onClick = { restTimerEditorGroup = setGroup }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Timer,
-                                            contentDescription = stringResource(R.string.rest_timer_edit),
-                                            tint = timerTint
-                                        )
-                                    }
-                                    IconButton(
+                                    RoundedIconButton(
+                                        onClick = { restTimerEditorGroup = setGroup },
+                                        icon = Icons.Default.Timer,
+                                        contentDescription = stringResource(R.string.rest_timer_edit),
+                                        tint = timerTint,
+                                        backgroundColor = actionBackground
+                                    )
+                                    RoundedIconButton(
                                         onClick = {
                                             notesEditorState = ExerciseNotesDialogState(
                                                 exerciseId = exercise.exerciseId,
                                                 name = exercise.name,
                                                 notes = userNotes
                                             )
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Edit,
-                                            contentDescription = stringResource(R.string.btn_edit_notes),
-                                            tint = colors.primary
-                                        )
-                                    }
+                                        },
+                                        icon = Icons.Default.Edit,
+                                        contentDescription = stringResource(R.string.btn_edit_notes),
+                                        tint = colors.primary,
+                                        backgroundColor = actionBackground
+                                    )
                                 }
                             }
                         } else {
@@ -459,28 +482,30 @@ private fun WorkoutInProgressContent(
                                     .fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                    TextButton(
-                                        modifier = Modifier.weight(1f),
-                                        onClick = {
-                                            notesEditorState = ExerciseNotesDialogState(
-                                                exerciseId = exercise.exerciseId,
-                                                name = exercise.name,
-                                                notes = userNotes
-                                            )
-                                        }
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Edit, contentDescription = null)
-                                        Spacer(Modifier.width(8.dp))
-                                    Text(stringResource(R.string.btn_add_notes))
+                                OutlinedButton(
+                                    modifier = Modifier.weight(1f),
+                                    onClick = {
+                                        notesEditorState = ExerciseNotesDialogState(
+                                            exerciseId = exercise.exerciseId,
+                                            name = exercise.name,
+                                            notes = userNotes
+                                        )
+                                    },
+                                    shape = MaterialTheme.shapes.medium,
+                                    border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.4f)),
+                                ) {
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = colors.primary)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(stringResource(R.string.btn_add_notes), color = colors.primary)
                                 }
-                                Spacer(Modifier.width(4.dp))
-                                IconButton(onClick = { restTimerEditorGroup = setGroup }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Timer,
-                                        contentDescription = stringResource(R.string.rest_timer_add),
-                                        tint = timerTint
-                                    )
-                                }
+                                Spacer(Modifier.width(8.dp))
+                                RoundedIconButton(
+                                    onClick = { restTimerEditorGroup = setGroup },
+                                    icon = Icons.Default.Timer,
+                                    contentDescription = stringResource(R.string.rest_timer_add),
+                                    tint = timerTint,
+                                    backgroundColor = actionBackground
+                                )
                             }
                         }
                     }
@@ -832,7 +857,8 @@ private fun WorkoutInProgressContent(
                     .fillMaxWidth()
                     .height(60.dp),
                 shape = MaterialTheme.shapes.large,
-                elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
+                colors = ButtonDefaults.buttonColors(backgroundColor = colors.primary, contentColor = colors.onPrimary),
+                elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 4.dp),
                 onClick = navToExercisePicker
             ) {
                 Icon(Icons.Default.Add, null)
@@ -847,8 +873,9 @@ private fun WorkoutInProgressContent(
                 horizontalArrangement = Arrangement.Center,
             ) {
                 OutlinedButton(
-                    modifier = Modifier.height(44.dp),
+                    modifier = Modifier.height(46.dp),
                     shape = MaterialTheme.shapes.medium,
+                    border = BorderStroke(1.dp, colors.onSurface.copy(alpha = 0.2f)),
                     onClick = { showCancelWorkoutDialog = true },
                 ) {
                     Text(stringResource(R.string.btn_discard_workout))
@@ -859,12 +886,140 @@ private fun WorkoutInProgressContent(
                         .weight(1f)
                         .height(48.dp),
                     shape = MaterialTheme.shapes.medium,
-                    elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 2.dp),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = colors.secondary, contentColor = colors.onSecondary),
+                    elevation = ButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 4.dp),
                     onClick = { showFinishWorkoutDialog = true }
                 ) {
                     Text(stringResource(R.string.btn_finish_workout))
                 }
             }
+        }
+    }
+}
+}
+
+@Composable
+private fun WorkoutInProgressHeader(
+    routineName: String,
+    duration: String,
+    totalExercises: Int,
+    totalSets: Int,
+    completedSets: Int,
+) {
+    val colors = MaterialTheme.colors
+    val typography = MaterialTheme.typography
+    val displayName = routineName.takeIf { it.isNotBlank() } ?: stringResource(R.string.unnamed_routine)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        shape = MaterialTheme.shapes.large,
+        elevation = 0.dp
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(colors.primary, colors.primaryVariant)
+                        ),
+                        RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
+                    )
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = displayName,
+                        style = typography.h5.copy(
+                            color = colors.onPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Text(
+                        text = stringResource(R.string.sheet_workout_in_progress),
+                        style = typography.caption.copy(color = colors.onPrimary.copy(alpha = 0.78f))
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                WorkoutHeaderStat(
+                    modifier = Modifier.weight(1f),
+                    label = stringResource(R.string.header_stat_duration),
+                    value = duration
+                )
+                WorkoutHeaderStat(
+                    modifier = Modifier.weight(1f),
+                    label = stringResource(R.string.header_stat_exercises),
+                    value = totalExercises.toString()
+                )
+                WorkoutHeaderStat(
+                    modifier = Modifier.weight(1f),
+                    label = stringResource(R.string.header_stat_sets_done),
+                    value = stringResource(R.string.header_stat_sets_done_value, completedSets, totalSets),
+                    highlight = completedSets > 0
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WorkoutHeaderStat(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String,
+    highlight: Boolean = false,
+) {
+    val colors = MaterialTheme.colors
+    val typography = MaterialTheme.typography
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = colors.surface,
+        elevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label.uppercase(),
+                style = typography.overline,
+                color = colors.onSurface.copy(alpha = 0.6f)
+            )
+            Text(
+                text = value,
+                style = typography.h6.copy(
+                    color = if (highlight) colors.primary else colors.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun RoundedIconButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color,
+    backgroundColor: Color,
+) {
+    IconButton(onClick = onClick) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(backgroundColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription, tint = tint)
         }
     }
 }
@@ -949,7 +1104,8 @@ private fun RestTimerIndicator(
     onAdd: () -> Unit,
     onSubtract: () -> Unit,
 ) {
-    val indicatorColor = MaterialTheme.colors.secondary.copy(alpha = 0.35f)
+    val primary = MaterialTheme.colors.primary
+    val indicatorColor = primary.copy(alpha = if (isActive) 0.28f else 0.16f)
     if (!isActive) {
         Box(
             modifier = modifier
@@ -961,7 +1117,7 @@ private fun RestTimerIndicator(
         Surface(
             modifier = modifier,
             shape = MaterialTheme.shapes.medium,
-            color = indicatorColor.copy(alpha = 0.5f)
+            color = indicatorColor
         ) {
             Row(
                 Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -975,7 +1131,7 @@ private fun RestTimerIndicator(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f),
                     modifier = Modifier.weight(1f)
                 )
                 Text(
@@ -989,7 +1145,7 @@ private fun RestTimerIndicator(
                     enabled = isActive && remainingSeconds > 0,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text(stringResource(R.string.rest_timer_minus_30))
+                    Text(stringResource(R.string.rest_timer_minus_30), color = MaterialTheme.colors.onSurface)
                 }
                 Spacer(Modifier.width(4.dp))
                 TextButton(
@@ -997,7 +1153,7 @@ private fun RestTimerIndicator(
                     enabled = isActive,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text(stringResource(R.string.rest_timer_plus_30))
+                    Text(stringResource(R.string.rest_timer_plus_30), color = MaterialTheme.colors.onSurface)
                 }
             }
         }

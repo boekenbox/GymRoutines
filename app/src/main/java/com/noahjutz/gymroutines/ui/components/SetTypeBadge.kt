@@ -29,11 +29,11 @@ fun SetTypeBadge(
 ) {
     val colors = MaterialTheme.colors
     val backgroundColor = if (isWarmup) {
-        colors.primary.copy(alpha = 0.16f)
+        colors.primary.copy(alpha = 0.14f)
     } else {
-        colors.onSurface.copy(alpha = 0.08f)
+        colors.onSurface.copy(alpha = 0.05f)
     }
-    val textColor = if (isWarmup) colors.primary else colors.onSurface
+    val textColor = if (isWarmup) colors.primary else colors.onSurface.copy(alpha = 0.82f)
     val label = if (isWarmup) stringResource(R.string.set_type_warmup_short) else (index + 1).toString()
     val description = if (isWarmup) {
         stringResource(R.string.set_type_warmup)
@@ -52,11 +52,11 @@ fun SetTypeBadge(
             .then(clickableModifier)
             .semantics { contentDescription = description },
         color = backgroundColor,
-        shape = RoundedCornerShape(10.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(

@@ -1,15 +1,19 @@
 package com.noahjutz.gymroutines.ui.exercises.detail
 
 import android.os.Build
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -23,6 +27,7 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -134,15 +139,25 @@ private fun LibraryExerciseDetail(
                     .build()
             }
             Spacer(modifier = Modifier.height(12.dp))
-            AsyncImage(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
-                    .padding(bottom = 4.dp),
-                model = imageRequest,
-                contentDescription = null,
-                contentScale = ContentScale.Crop
-            )
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colors.onSurface.copy(alpha = 0.04f))
+            ) {
+                AsyncImage(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp)
+                        .align(Alignment.Center)
+                        .aspectRatio(4f / 3f, matchHeightConstraintsFirst = false),
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.Center
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
         FlowRow(
             modifier = Modifier

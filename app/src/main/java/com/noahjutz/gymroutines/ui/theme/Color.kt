@@ -2,16 +2,16 @@ package com.noahjutz.gymroutines.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Primary = Color(0xFF4A58C9)
-val PrimaryDark = Color(0xFF303A8F)
-val PrimaryDesaturated = Color(0xFF808CD7)
-val Secondary = Color(0xFFFF7A59)
-val SecondaryDark = Color(0xFFE0603C)
+val Primary = Color(0xFF2D6DFF)
+val PrimaryDark = Color(0xFF1B46CC)
+val PrimaryDesaturated = Color(0xFF7FA4FF)
+val Secondary = Color(0xFF2EC28A)
+val SecondaryDark = Color(0xFF1C8B62)
 
-val LightBackground = Color(0xFFF5F4FA)
+val LightBackground = Color(0xFFF4F6FB)
 val LightSurface = Color(0xFFFFFFFF)
-val LightOnSurface = Color(0xFF1C1D26)
+val LightOnSurface = Color(0xFF1A2130)
 
-val DarkBackground = Color(0xFF121214)
-val DarkSurface = Color(0xFF1E1F25)
-val DarkOnSurface = Color(0xFFE6E7F1)
+val DarkBackground = Color(0xFF10141F)
+val DarkSurface = Color(0xFF1A2030)
+val DarkOnSurface = Color(0xFFE6E9F4)

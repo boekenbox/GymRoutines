@@ -51,10 +51,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -96,6 +98,20 @@ class WorkoutInProgressViewModel(
     private var restTimerJob: Job? = null
     private var restTimerSoundEnabled = AppPrefs.RestTimerSound.defaultValue
     private var restTimerVibrationEnabled = AppPrefs.RestTimerVibration.defaultValue
+
+    val uiState: StateFlow<WorkoutInProgressUiState> = combine(
+        workout,
+        exerciseRepository.exercises
+    ) { workoutValue, exercises ->
+        WorkoutInProgressUiState(
+            workout = workoutValue,
+            exercisesById = exercises.associateBy { it.exerciseId }
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = WorkoutInProgressUiState()
+    )
 
     val routineName = workout.map {
         it?.workout?.routineId?.let { routineId ->
@@ -464,3 +480,8 @@ class WorkoutInProgressViewModel(
         super.onCleared()
     }
 }
+
+data class WorkoutInProgressUiState(
+    val workout: WorkoutWithSetGroups? = null,
+    val exercisesById: Map<Int, Exercise> = emptyMap(),
+)

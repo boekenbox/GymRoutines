@@ -32,11 +32,16 @@ import com.noahjutz.gymroutines.data.domain.Routine
 import com.noahjutz.gymroutines.data.domain.RoutineSet
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroup
 import com.noahjutz.gymroutines.data.domain.RoutineSetGroupWithSets
+import com.noahjutz.gymroutines.data.domain.RoutineWithSetGroups
 import com.noahjutz.gymroutines.data.domain.Workout
 import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutSetGroup
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class RoutineEditorViewModel(
@@ -48,13 +53,28 @@ class RoutineEditorViewModel(
 ) : ViewModel() {
     val isWorkoutInProgress: Flow<Boolean> =
         preferences.data.map { it[AppPrefs.CurrentWorkout.key]?.let { it >= 0 } ?: false }
-    val routine = routineRepository.getRoutineWithSetGroups(routineId)
+    private val routineWithSetGroups = routineRepository.getRoutineWithSetGroups(routineId)
+    val routine = routineWithSetGroups
     private val _routineFlow = routineRepository.getRoutineFlow(routineId)
     private var _routine: Routine? = null
     private val _setsFlow = routineRepository.getSetsFlow(routineId)
     private var _sets = emptyList<RoutineSet>()
     private val _setGroupsFlow = routineRepository.getSetGroupsFlow(routineId)
     private var _setGroups = emptyList<RoutineSetGroup>()
+
+    val uiState: StateFlow<RoutineEditorUiState> = combine(
+        routineWithSetGroups,
+        exerciseRepository.exercises
+    ) { routineWithGroups, exercises ->
+        RoutineEditorUiState(
+            routineWithSetGroups = routineWithGroups,
+            exercisesById = exercises.associateBy { it.exerciseId }
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = RoutineEditorUiState()
+    )
 
     init {
         viewModelScope.launch {
@@ -248,3 +268,8 @@ class RoutineEditorViewModel(
         }
     }
 }
+
+data class RoutineEditorUiState(
+    val routineWithSetGroups: RoutineWithSetGroups? = null,
+    val exercisesById: Map<Int, Exercise> = emptyMap(),
+)

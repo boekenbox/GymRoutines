@@ -110,6 +110,28 @@ open class PrepareExerciseIndexTask : DefaultTask() {
             secondaryMuscles = entries.flatMap { it.secondaryMuscles }.toSortedSet().toList(),
         )
         metadataFile.writeText(json.encodeToString(metadata))
+
+        val mediaDir = File(sourceRoot, "media")
+        val referencedAssets = entries
+            .flatMap { entry ->
+                buildList {
+                    entry.heroAsset?.let { add(it) }
+                    addAll(entry.mediaAssets)
+                }
+            }
+            .mapNotNull { asset -> asset.removePrefix("media/").takeIf { asset.startsWith("media/") } }
+            .toSortedSet()
+
+        if (referencedAssets.isNotEmpty()) {
+            val outputMediaDir = File(containerDir, "media")
+            outputMediaDir.mkdirs()
+            referencedAssets.forEach { fileName ->
+                val sourceFile = File(mediaDir, fileName)
+                if (sourceFile.exists()) {
+                    sourceFile.copyTo(File(outputMediaDir, fileName), overwrite = true)
+                }
+            }
+        }
     }
 
     private fun findHeroAsset(id: String): String? {

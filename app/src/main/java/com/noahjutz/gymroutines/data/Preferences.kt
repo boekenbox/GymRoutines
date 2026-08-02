@@ -66,6 +66,11 @@ sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {
         defaultValue = -1,
     )
 
+    data object InsightsDataStartEpochMillis : AppPrefs<Long>(
+        key = longPreferencesKey("insightsDataStartEpochMillis"),
+        defaultValue = 0L,
+    )
+
     data object BodyWeight : AppPrefs<Float>(
         key = floatPreferencesKey("bodyWeight"),
         defaultValue = 80f
@@ -79,6 +84,31 @@ sealed class AppPrefs<T>(val key: Preferences.Key<T>, val defaultValue: T) {
     data object RestTimerVibration : AppPrefs<Boolean>(
         key = booleanPreferencesKey("restTimerVibration"),
         defaultValue = true,
+    )
+
+    data object RestTimerEndEpochMillis : AppPrefs<Long>(
+        key = longPreferencesKey("restTimerEndEpochMillis"),
+        defaultValue = 0L,
+    )
+
+    data object RestTimerWorkoutId : AppPrefs<Int>(
+        key = intPreferencesKey("restTimerWorkoutId"),
+        defaultValue = -1,
+    )
+
+    data object RestTimerSetId : AppPrefs<Int>(
+        key = intPreferencesKey("restTimerSetId"),
+        defaultValue = -1,
+    )
+
+    data object RestTimerGroupId : AppPrefs<Int>(
+        key = intPreferencesKey("restTimerGroupId"),
+        defaultValue = -1,
+    )
+
+    data object RestTimerIsWarmup : AppPrefs<Boolean>(
+        key = booleanPreferencesKey("restTimerIsWarmup"),
+        defaultValue = false,
     )
 }
 

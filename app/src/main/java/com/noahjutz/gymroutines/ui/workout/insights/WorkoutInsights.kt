@@ -275,8 +275,43 @@ private fun SessionSummaryContent(summary: SessionSummaryUi) {
         }
         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             SummaryMetric(label = stringResource(R.string.insights_metric_volume), value = formatWeight(summary.totalVolume))
+            SummaryMetric(
+                label = stringResource(R.string.insights_metric_sets),
+                value = "${summary.completedWorkingSets}/${summary.plannedWorkingSets}"
+            )
             SummaryMetric(label = stringResource(R.string.insights_metric_total_reps), value = summary.totalReps.toString())
-            SummaryMetric(label = stringResource(R.string.insights_metric_avg_load), value = formatWeight(summary.avgLoadPerRep))
+        }
+        if (summary.topSets.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.insights_top_sets_title),
+                style = typography.subtitle2,
+                fontWeight = FontWeight.SemiBold,
+            )
+            summary.topSets.forEach { topSet ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = topSet.exerciseName,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = typography.body2,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.insights_top_set_detail,
+                            topSet.reps?.toString() ?: "-",
+                            topSet.load?.let(::formatWeight) ?: "-",
+                            topSet.estimatedOneRm?.let(::formatWeight) ?: "-",
+                        ),
+                        style = typography.caption,
+                        color = colors.onSurface.copy(alpha = 0.7f),
+                    )
+                }
+            }
         }
     }
 }

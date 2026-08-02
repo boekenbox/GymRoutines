@@ -1,4 +1,5 @@
 import PrepareExerciseIndexTask
+import org.gradle.api.tasks.compile.JavaCompile
 
 /*
  * Splitfit
@@ -100,6 +101,13 @@ android {
         )
     }
     namespace = "com.noahjutz.gymroutines"
+}
+
+// KSP keeps intermediate by-round sources beside the final generated sources.
+// They are not inputs to javac and can otherwise duplicate Room implementations
+// when more than one build variant is assembled in the same checkout.
+tasks.withType<JavaCompile>().configureEach {
+    exclude("**/byRounds/**")
 }
 
 dependencies {

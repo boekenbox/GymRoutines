@@ -144,6 +144,9 @@ fun NavGraph(
                     },
                     popBackStack = { navController.popBackStack() },
                     navToExercisePicker = { navController.navigate(Screen.exercisePicker.name) },
+                    navToExerciseEditor = { exerciseId ->
+                        navController.navigate("${Screen.exerciseEditor}?exerciseId=$exerciseId")
+                    },
                     exerciseIdsToAdd = exerciseIdsToAdd ?: emptyList()
                 )
             }

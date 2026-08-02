@@ -222,6 +222,7 @@ class RoutineEditorViewModel(
                         position = routineSetGroup.position,
                         restTimerWarmupSeconds = routineSetGroup.restTimerWarmupSeconds,
                         restTimerWorkingSeconds = routineSetGroup.restTimerWorkingSeconds,
+                        saveToRoutine = true,
                     )
                     val setGroupId = workoutRepository.insert(workoutSetGroup)
 

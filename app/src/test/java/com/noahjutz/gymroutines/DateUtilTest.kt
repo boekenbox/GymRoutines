@@ -96,7 +96,7 @@ class DateUtilTest {
     fun `1 Day streak 2`() {
         val reference = Date(1616841912690)
         val streak = listOf(
-            Date(1616713200000),
+            Date(reference.time - 48.hours.inWholeMilliseconds),
             Date(0),
             reference
         ).currentDailyStreakInternal(reference)

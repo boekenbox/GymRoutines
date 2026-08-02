@@ -52,11 +52,14 @@ class WorkoutCompletedViewModel(
 
         val workoutSetGroups = workoutRepository.getSetGroupsInWorkout(workoutId)
         val workoutSets = workoutRepository.getSetsInWorkout(workoutId)
-        for (setGroup in workoutSetGroups) {
+        workoutSetGroups
+            .filter { it.saveToRoutine }
+            .sortedBy { it.position }
+            .forEachIndexed { index, setGroup ->
             val routineSetGroup = RoutineSetGroup(
                 routineId = routineId,
                 exerciseId = setGroup.exerciseId,
-                position = setGroup.position,
+                position = index,
                 restTimerWarmupSeconds = setGroup.restTimerWarmupSeconds,
                 restTimerWorkingSeconds = setGroup.restTimerWorkingSeconds,
             )
@@ -72,7 +75,7 @@ class WorkoutCompletedViewModel(
                 )
                 routineRepository.insert(routineSet)
             }
-        }
+            }
     }
 
     private suspend fun revertRoutine() {

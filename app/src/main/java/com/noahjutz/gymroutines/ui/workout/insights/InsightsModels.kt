@@ -16,7 +16,18 @@ data class SessionSummaryUi(
     val totalReps: Int,
     val avgLoadPerRep: Double,
     val durationMinutes: Double?,
-    val prCount: Int
+    val prCount: Int,
+    val completedWorkingSets: Int = 0,
+    val plannedWorkingSets: Int = 0,
+    val topSets: List<TopSetUi> = emptyList(),
+)
+
+data class TopSetUi(
+    val exerciseId: Int,
+    val exerciseName: String,
+    val load: Double?,
+    val reps: Int?,
+    val estimatedOneRm: Double?,
 )
 
 data class WeeklyVolumePoint(
@@ -53,6 +64,7 @@ data class PrEventUi(
     val id: String,
     val workoutId: Int,
     val setIndex: Int,
+    val exerciseId: Int = 0,
     val exerciseName: String,
     val type: PrType,
     val value: Double,

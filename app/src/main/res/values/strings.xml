@@ -100,6 +100,10 @@
     <string name="btn_move_up">Move Up</string>
     <string name="btn_move_down">Move Down</string>
     <string name="btn_add_exercise">Add Exercise</string>
+    <string name="btn_rename_exercise">Rename everywhere</string>
+    <string name="workout_only_exercise">Workout only</string>
+    <string name="save_exercise_to_routine">Keep in routine next time</string>
+    <string name="remove_exercise_from_routine">Use for this workout only</string>
     <string name="btn_new_routine">New Routine</string>
     <string name="routine_card_hint">Tap to refine this plan or start it right away.</string>
     <string name="screen_about">About</string>
@@ -184,6 +188,9 @@
     <string name="insights_metric_volume">Volume</string>
     <string name="insights_metric_total_reps">Total reps</string>
     <string name="insights_metric_avg_load">Avg load/rep</string>
+    <string name="insights_metric_sets">Working sets</string>
+    <string name="insights_top_sets_title">Top sets</string>
+    <string name="insights_top_set_detail">%1$s reps • %2$s kg • est. 1RM %3$s kg</string>
     <string name="insights_unit_weight">kg</string>
     <string name="insights_unit_reps">reps</string>
     <string name="pref_body_weight">Body weight</string>

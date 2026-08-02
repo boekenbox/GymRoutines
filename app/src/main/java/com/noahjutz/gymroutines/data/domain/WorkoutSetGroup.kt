@@ -22,6 +22,8 @@ data class WorkoutSetGroup(
     val position: Int,
     val restTimerWarmupSeconds: Int = 0,
     val restTimerWorkingSeconds: Int = 0,
+    @ColumnInfo(defaultValue = "1")
+    val saveToRoutine: Boolean = true,
 
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

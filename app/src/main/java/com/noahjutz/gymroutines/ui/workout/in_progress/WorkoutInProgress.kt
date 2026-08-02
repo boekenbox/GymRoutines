@@ -360,6 +360,19 @@ private fun WorkoutInProgressContent(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
+                                if (!setGroup.group.saveToRoutine) {
+                                    Surface(
+                                        color = MaterialTheme.colors.onPrimary.copy(alpha = 0.16f),
+                                        shape = RoundedCornerShape(50),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.workout_only_exercise),
+                                            style = typography.caption,
+                                            color = MaterialTheme.colors.onPrimary,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        )
+                                    }
+                                }
                             }
 
                             IconButton(
@@ -420,6 +433,25 @@ private fun WorkoutInProgressContent(
                                         }
                                     ) {
                                         Text(stringResource(R.string.btn_move_down))
+                                    }
+                                    DropdownMenuItem(
+                                        onClick = {
+                                            expanded = false
+                                            viewModel.setSaveToRoutine(
+                                                setGroup.group.id,
+                                                !setGroup.group.saveToRoutine,
+                                            )
+                                        }
+                                    ) {
+                                        Text(
+                                            stringResource(
+                                                if (setGroup.group.saveToRoutine) {
+                                                    R.string.remove_exercise_from_routine
+                                                } else {
+                                                    R.string.save_exercise_to_routine
+                                                }
+                                            )
+                                        )
                                     }
                                 }
                             }

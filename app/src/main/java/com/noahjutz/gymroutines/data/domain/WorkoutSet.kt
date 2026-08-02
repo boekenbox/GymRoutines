@@ -49,3 +49,6 @@ data class WorkoutSet(
     @PrimaryKey(autoGenerate = true)
     val workoutSetId: Int = 0
 )
+
+/** A set is eligible for performance statistics only after the user completes it. */
+fun WorkoutSet.isPerformanceSet(): Boolean = complete && !isWarmup

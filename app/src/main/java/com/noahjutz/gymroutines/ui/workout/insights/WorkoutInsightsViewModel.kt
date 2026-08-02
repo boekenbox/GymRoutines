@@ -12,6 +12,7 @@ import com.noahjutz.gymroutines.data.WorkoutRepository
 import com.noahjutz.gymroutines.data.domain.Workout
 import com.noahjutz.gymroutines.data.domain.WorkoutSet
 import com.noahjutz.gymroutines.data.domain.WorkoutWithSetGroups
+import com.noahjutz.gymroutines.data.domain.isPerformanceSet
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -41,6 +42,16 @@ class WorkoutInsightsViewModel(
     private val preferences: DataStore<Preferences>,
 ) : ViewModel() {
 
+    init {
+        viewModelScope.launch {
+            preferences.edit { prefs ->
+                if (prefs[AppPrefs.InsightsDataStartEpochMillis.key] == null) {
+                    prefs[AppPrefs.InsightsDataStartEpochMillis.key] = System.currentTimeMillis()
+                }
+            }
+        }
+    }
+
     private val zoneId = ZoneId.systemDefault()
     private val weekFields = WeekFields.ISO
     private val defaultLocale = Locale.getDefault()
@@ -69,6 +80,13 @@ class WorkoutInsightsViewModel(
         .map { prefs -> prefs[AppPrefs.CurrentWorkout.key] ?: AppPrefs.CurrentWorkout.defaultValue }
         .distinctUntilChanged()
 
+    private val insightsDataStartFlow = preferences.data
+        .map { prefs ->
+            prefs[AppPrefs.InsightsDataStartEpochMillis.key]
+                ?: Long.MAX_VALUE
+        }
+        .distinctUntilChanged()
+
     private val routineNameFlow = routineRepository.routines
         .map { routines -> routines.associate { it.routineId to it.name } }
         .distinctUntilChanged()
@@ -94,12 +112,14 @@ class WorkoutInsightsViewModel(
         selectedExerciseFlow,
         bodyWeightFlow,
         currentWorkoutFlow,
-    ) { progressMetric, selectedExerciseId, bodyWeight, currentWorkoutId ->
+        insightsDataStartFlow,
+    ) { progressMetric, selectedExerciseId, bodyWeight, currentWorkoutId, insightsDataStart ->
         PreferenceSnapshot(
             progressMetric = progressMetric,
             selectedExerciseId = selectedExerciseId,
             bodyWeight = bodyWeight,
             currentWorkoutId = currentWorkoutId,
+            insightsDataStartEpochMillis = insightsDataStart,
         )
     }
 
@@ -133,13 +153,17 @@ class WorkoutInsightsViewModel(
                 metric = preferences.progressMetric,
             )
 
-            val prComputation = computePersonalRecords(sessions)
+            val prSessions = sessions.filter {
+                it.startInstant.toEpochMilli() >= preferences.insightsDataStartEpochMillis
+            }
+            val prComputation = computePersonalRecords(prSessions)
             val weeklyVolume = buildWeeklyVolume(sessions)
             val sessionComparison = buildSessionComparison(sessions)
             val consistency = buildConsistency(sessions, weeklyVolume)
             val routineUtilization = buildRoutineUtilization(sessions)
             val durationChart = buildDurationChart(sessions)
             val summary = sessions.lastOrNull()?.let { session ->
+                val sessionEvents = prComputation.eventsByWorkout[session.workout.workoutId].orEmpty()
                 SessionSummaryUi(
                     workoutId = session.workout.workoutId,
                     routineName = session.routineName,
@@ -148,7 +172,16 @@ class WorkoutInsightsViewModel(
                     totalReps = session.totalReps,
                     avgLoadPerRep = session.avgLoadPerRep,
                     durationMinutes = session.durationMinutes,
-                    prCount = prComputation.eventsByWorkout[session.workout.workoutId]?.size ?: 0,
+                    prCount = sessionEvents.map { it.exerciseId }.distinct().size,
+                    completedWorkingSets = session.sets.size,
+                    plannedWorkingSets = session.plannedWorkingSets,
+                    topSets = session.exerciseSummaries.values
+                        .mapNotNull { it.topSet }
+                        .sortedWith(
+                            compareByDescending<TopSetUi> { it.estimatedOneRm ?: it.load ?: 0.0 }
+                                .thenByDescending { it.reps ?: 0 }
+                        )
+                        .take(6),
                 )
             }
 
@@ -212,7 +245,7 @@ class WorkoutInsightsViewModel(
         val exerciseFrequency = sessions
             .flatMap { session -> session.exerciseSummaries.values }
             .groupBy { it.exerciseId }
-            .map { (exerciseId, entries) ->
+            .map { (_, entries) ->
                 val name = entries.first().exerciseName
                 name to entries.size
             }
@@ -365,6 +398,9 @@ class WorkoutInsightsViewModel(
         val date = startInstant.atZone(zoneId).toLocalDate()
 
         val sortedGroups = session.setGroups.sortedBy { it.group.position }
+        val plannedWorkingSets = sortedGroups.sumOf { group ->
+            group.sets.count { !it.isWarmup }
+        }
         val exerciseSummaries = mutableMapOf<Int, ExerciseSummaryBuilder>()
         val sets = mutableListOf<WorkoutSetSample>()
         val exerciseNames = exerciseNameCache.names
@@ -374,7 +410,8 @@ class WorkoutInsightsViewModel(
             val exerciseId = group.group.exerciseId
             val exerciseName = exerciseNames[exerciseId] ?: "Exercise #$exerciseId"
             val normalized = normalizedNames[exerciseId] ?: exerciseName.trim().lowercase(defaultLocale)
-            group.sets.forEach { set ->
+            group.sets.forEach setLoop@ { set ->
+                if (!set.isPerformanceSet()) return@setLoop
                 val normalizedWeight = normalizeWeight(set.weight, bodyWeight)
                 sets += WorkoutSetSample(
                     exerciseId = exerciseId,
@@ -412,7 +449,8 @@ class WorkoutInsightsViewModel(
             exerciseSummaries = summaries,
             sets = sets,
             startInstant = startInstant,
-            exerciseDailyBest = dailyBest
+            exerciseDailyBest = dailyBest,
+            plannedWorkingSets = plannedWorkingSets,
         )
     }
 
@@ -440,6 +478,7 @@ private data class PreferenceSnapshot(
     val selectedExerciseId: Int?,
     val bodyWeight: Float,
     val currentWorkoutId: Int,
+    val insightsDataStartEpochMillis: Long,
 )
 
 internal const val WEIGHT_EPSILON = 1e-3
@@ -471,6 +510,7 @@ internal class ExerciseSummaryBuilder(
     private var loadCount = 0
     private var bestLoad = 0.0
     private var bestEst = 0.0
+    private var topSet: TopSetUi? = null
 
     fun addSet(set: WorkoutSet, normalizedWeight: Double?) {
         val reps = set.reps ?: 0
@@ -486,9 +526,10 @@ internal class ExerciseSummaryBuilder(
                 if (normalizedWeight > bestLoad) {
                     bestLoad = normalizedWeight
                 }
-                val est = epley(normalizedWeight, reps)
-                if (est > bestEst) {
-                    bestEst = est
+                estimatedOneRm(normalizedWeight, reps)?.let { est ->
+                    if (est > bestEst) {
+                        bestEst = est
+                    }
                 }
             } else {
                 if (normalizedWeight > bestLoad) {
@@ -498,6 +539,20 @@ internal class ExerciseSummaryBuilder(
                     bestEst = normalizedWeight
                 }
             }
+        }
+
+        val candidate = TopSetUi(
+            exerciseId = exerciseId,
+            exerciseName = name,
+            load = normalizedWeight,
+            reps = set.reps,
+            estimatedOneRm = normalizedWeight?.let { weight ->
+                set.reps?.let { repsForSet -> estimatedOneRm(weight, repsForSet) }
+            },
+        )
+        val current = topSet
+        if (current == null || isTopSetBetter(candidate, current)) {
+            topSet = candidate
         }
     }
 
@@ -510,6 +565,7 @@ internal class ExerciseSummaryBuilder(
             averageLoad = if (loadCount == 0) 0.0 else loadSum / loadCount,
             bestLoad = if (bestLoad == 0.0) null else bestLoad,
             bestEst = if (bestEst == 0.0) null else bestEst,
+            topSet = topSet,
         )
     }
 }
@@ -522,6 +578,7 @@ internal data class ExerciseSessionSummary(
     val averageLoad: Double,
     val bestLoad: Double?,
     val bestEst: Double?,
+    val topSet: TopSetUi? = null,
 )
 
 internal class DailyBest(
@@ -542,6 +599,7 @@ internal data class SessionComputation(
     val sets: List<WorkoutSetSample>,
     val startInstant: Instant,
     val exerciseDailyBest: Map<Int, DailyBest>,
+    val plannedWorkingSets: Int = 0,
 )
 
 internal fun computePersonalRecords(
@@ -556,82 +614,93 @@ internal fun computePersonalRecords(
     val events = mutableListOf<PrEventUi>()
     val perSession = mutableMapOf<Int, MutableList<PrEventUi>>()
 
-    sessions.forEach { session ->
+    val orderedSessions = sessions.sortedWith(
+        compareBy<SessionComputation> { it.startInstant }
+            .thenBy { it.workout.workoutId }
+    )
+
+    orderedSessions.forEach { session ->
+        val candidates = mutableMapOf<Int, MutableMap<PrType, PrCandidate>>()
+        val repsCandidates = mutableMapOf<Int, MutableMap<Double, PrCandidate>>()
+
         session.sets.forEachIndexed { setIndex, sample ->
-            val load = sample.weight
-            val reps = sample.reps
+            if (!sample.rawSet.isPerformanceSet()) return@forEachIndexed
+            val load = sample.weight ?: return@forEachIndexed
             val exerciseId = sample.exerciseId
-            val sessionEvents = perSession.getOrPut(session.workout.workoutId) { mutableListOf() }
-
-            if (load != null) {
-                val previous = bestLoad[exerciseId]
-                if (previous == null || isGreater(load, previous)) {
-                    val event = PrEventUi(
-                        id = "${session.workout.workoutId}-${exerciseId}-load-$setIndex",
-                        workoutId = session.workout.workoutId,
-                        setIndex = setIndex,
-                        exerciseName = sample.exerciseName,
-                        type = PrType.Load,
-                        value = load,
-                        reps = reps,
-                        load = load,
-                        occurredAt = session.startInstant,
-                    )
-                    events += event
-                    sessionEvents += event
-                    bestLoad[exerciseId] = load
-                    bestLoadEvents[exerciseId] = event
-                } else {
-                    bestLoad[exerciseId] = max(previous, load)
-                }
+            val reps = sample.reps
+            val exerciseCandidates = candidates.getOrPut(exerciseId) { mutableMapOf() }
+            val loadCandidate = PrCandidate(
+                exerciseId = exerciseId,
+                exerciseName = sample.exerciseName,
+                setIndex = setIndex,
+                value = load,
+                reps = reps,
+                load = load,
+            )
+            val previousLoadCandidate = exerciseCandidates[PrType.Load]
+            if (previousLoadCandidate == null || isGreater(loadCandidate.value, previousLoadCandidate.value)) {
+                exerciseCandidates[PrType.Load] = loadCandidate
             }
 
-            if (load != null && reps != null && reps > 0) {
+            if (reps != null && reps > 0) {
                 val loadKey = load
-                val repsMap = bestRepsAtLoad.getOrPut(exerciseId) { mutableMapOf() }
-                val previous = repsMap[loadKey]
-                if (previous == null || reps > previous) {
-                    val event = PrEventUi(
-                        id = "${session.workout.workoutId}-${exerciseId}-reps-$setIndex",
-                        workoutId = session.workout.workoutId,
-                        setIndex = setIndex,
-                        exerciseName = sample.exerciseName,
-                        type = PrType.RepsAtLoad,
-                        value = reps.toDouble(),
-                        reps = reps,
-                        load = load,
-                        occurredAt = session.startInstant,
-                    )
-                    events += event
-                    sessionEvents += event
-                    repsMap[loadKey] = reps
-                    val repsEvents = bestRepsEvents.getOrPut(exerciseId) { mutableMapOf() }
-                    repsEvents[loadKey] = event
+                val byLoad = repsCandidates.getOrPut(exerciseId) { mutableMapOf() }
+                val previous = byLoad[loadKey]
+                if (previous == null || reps > previous.value) {
+                    byLoad[loadKey] = loadCandidate.copy(value = reps.toDouble())
+                }
+
+                estimatedOneRm(load, reps)?.let { estimate ->
+                    val estimateCandidate = loadCandidate.copy(value = estimate)
+                    val previousEstimate = exerciseCandidates[PrType.EstimatedOneRm]
+                    if (previousEstimate == null || isGreater(estimate, previousEstimate.value)) {
+                        exerciseCandidates[PrType.EstimatedOneRm] = estimateCandidate
+                    }
+                }
+            }
+        }
+
+        candidates.forEach { (exerciseId, exerciseCandidates) ->
+            val sessionEvents = perSession.getOrPut(session.workout.workoutId) { mutableListOf() }
+            val loadCandidate = exerciseCandidates[PrType.Load]
+            if (loadCandidate != null) {
+                val currentRecord = bestLoad[exerciseId]
+                val recordEvent = loadCandidate.toUi(session, PrType.Load, "load")
+                if (currentRecord != null && isGreater(loadCandidate.value, currentRecord)) {
+                    events += recordEvent
+                    sessionEvents += recordEvent
+                }
+                if (currentRecord == null || isGreater(loadCandidate.value, currentRecord)) {
+                    bestLoad[exerciseId] = loadCandidate.value
+                    bestLoadEvents[exerciseId] = recordEvent
                 }
             }
 
-            if (load != null) {
-                val est = reps?.takeIf { it > 0 }?.let { epley(load, it) } ?: load
-                val normalizedEst = roundToDecimals(est, WEIGHT_ROUNDING_DECIMALS)
-                val previous = bestEst[exerciseId]
-                if (previous == null || isGreater(normalizedEst, previous)) {
-                    val event = PrEventUi(
-                        id = "${session.workout.workoutId}-${exerciseId}-est-$setIndex",
-                        workoutId = session.workout.workoutId,
-                        setIndex = setIndex,
-                        exerciseName = sample.exerciseName,
-                        type = PrType.EstimatedOneRm,
-                        value = normalizedEst,
-                        reps = reps,
-                        load = load,
-                        occurredAt = session.startInstant,
-                    )
-                    events += event
-                    sessionEvents += event
-                    bestEst[exerciseId] = normalizedEst
-                    bestEstEvents[exerciseId] = event
-                } else {
-                    bestEst[exerciseId] = max(previous, normalizedEst)
+            val repsByLoad = repsCandidates[exerciseId].orEmpty()
+            repsByLoad.forEach { (loadKey, candidate) ->
+                val currentRecord = bestRepsAtLoad.getOrPut(exerciseId) { mutableMapOf() }[loadKey]
+                val recordEvent = candidate.toUi(session, PrType.RepsAtLoad, "reps")
+                if (currentRecord != null && candidate.value > currentRecord) {
+                    events += recordEvent
+                    sessionEvents += recordEvent
+                }
+                if (currentRecord == null || candidate.value > currentRecord) {
+                    bestRepsAtLoad.getOrPut(exerciseId) { mutableMapOf() }[loadKey] = candidate.value.toInt()
+                    bestRepsEvents.getOrPut(exerciseId) { mutableMapOf() }[loadKey] = recordEvent
+                }
+            }
+
+            val estimateCandidate = exerciseCandidates[PrType.EstimatedOneRm]
+            if (estimateCandidate != null) {
+                val currentRecord = bestEst[exerciseId]
+                val recordEvent = estimateCandidate.toUi(session, PrType.EstimatedOneRm, "est")
+                if (currentRecord != null && isGreater(estimateCandidate.value, currentRecord)) {
+                    events += recordEvent
+                    sessionEvents += recordEvent
+                }
+                if (currentRecord == null || isGreater(estimateCandidate.value, currentRecord)) {
+                    bestEst[exerciseId] = roundToDecimals(estimateCandidate.value, WEIGHT_ROUNDING_DECIMALS)
+                    bestEstEvents[exerciseId] = recordEvent.copy(value = bestEst[exerciseId]!!)
                 }
             }
         }
@@ -655,6 +724,34 @@ internal fun computePersonalRecords(
     return PrComputationResult(sortedEvents, sortedPerSession, currentByType)
 }
 
+private data class PrCandidate(
+    val exerciseId: Int,
+    val exerciseName: String,
+    val setIndex: Int,
+    val value: Double,
+    val reps: Int?,
+    val load: Double?,
+)
+
+private fun PrCandidate.toUi(
+    session: SessionComputation,
+    type: PrType,
+    suffix: String,
+): PrEventUi {
+    return PrEventUi(
+        id = "${session.workout.workoutId}-${exerciseId}-$suffix-$setIndex",
+        workoutId = session.workout.workoutId,
+        setIndex = setIndex,
+        exerciseId = exerciseId,
+        exerciseName = exerciseName,
+        type = type,
+        value = value,
+        reps = reps,
+        load = load,
+        occurredAt = session.startInstant,
+    )
+}
+
 internal fun normalizeWeight(raw: Double?, bodyWeight: Double): Double? {
     val weight = raw ?: return null
     if (!weight.isFinite()) return null
@@ -672,6 +769,19 @@ internal fun roundToDecimals(value: Double, decimals: Int): Double {
 internal fun epley(load: Double, reps: Int): Double {
     val capped = min(reps, 12)
     return load * (1 + capped / 30.0)
+}
+
+internal fun estimatedOneRm(load: Double, reps: Int): Double? {
+    if (!load.isFinite() || load <= 0.0 || reps !in 1..12) return null
+    return roundToDecimals(epley(load, reps), WEIGHT_ROUNDING_DECIMALS)
+}
+
+private fun isTopSetBetter(candidate: TopSetUi, current: TopSetUi): Boolean {
+    val candidateScore = candidate.estimatedOneRm ?: candidate.load ?: 0.0
+    val currentScore = current.estimatedOneRm ?: current.load ?: 0.0
+    if (isGreater(candidateScore, currentScore)) return true
+    if (isGreater(currentScore, candidateScore)) return false
+    return (candidate.reps ?: 0) > (current.reps ?: 0)
 }
 
 private fun isGreater(candidate: Double, current: Double): Boolean {

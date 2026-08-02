@@ -41,12 +41,12 @@ class WorkoutInsightsViewModelTest {
         val result = computePersonalRecords(sessions)
 
         val loadEvents = result.events.filter { it.type == PrType.Load }
-        assertEquals(2, loadEvents.size)
+        assertEquals(1, loadEvents.size)
         assertEquals(20.0, loadEvents.first().value, 1e-6)
 
         val oneRmEvents = result.events.filter { it.type == PrType.EstimatedOneRm }
-        assertEquals(2, oneRmEvents.size)
-        assertTrue(oneRmEvents.first().value > oneRmEvents.last().value)
+        assertEquals(1, oneRmEvents.size)
+        assertEquals(25.33, oneRmEvents.first().value, 1e-6)
 
         val secondWorkoutEvents = result.eventsByWorkout[2]
         assertNotNull(secondWorkoutEvents)
@@ -80,12 +80,41 @@ class WorkoutInsightsViewModelTest {
         val result = computePersonalRecords(sessions)
 
         assertTrue(result.eventsByWorkout[10].isNullOrEmpty())
-        val workout11Events = result.eventsByWorkout[11]
-        assertNotNull(workout11Events)
-        val loadPr = workout11Events.firstOrNull { it.type == PrType.Load }
+        assertTrue(result.eventsByWorkout[11].isNullOrEmpty())
+        val loadPr = result.currentByType[PrType.Load]?.firstOrNull()
         assertNotNull(loadPr)
         assertEquals(77.5, loadPr.value, 1e-6)
-        assertTrue(result.events.any { it.type == PrType.Load && it.value == 77.5 })
+    }
+
+    @Test
+    fun uncheckedSetsDoNotEstablishOrImprovePrs() {
+        val baseInstant = Instant.parse("2023-02-15T08:00:00Z")
+        val sessions = listOf(
+            createSession(
+                workoutId = 30,
+                instant = baseInstant,
+                exerciseId = 44,
+                exerciseName = "Row",
+                weight = 20.0,
+                reps = 8,
+            ),
+            createSession(
+                workoutId = 31,
+                instant = baseInstant.plus(1, ChronoUnit.DAYS),
+                exerciseId = 44,
+                exerciseName = "Row",
+                weight = 100.0,
+                reps = 8,
+                complete = false,
+            ),
+        )
+
+        val result = computePersonalRecords(sessions)
+
+        assertTrue(result.events.isEmpty())
+        val loadPr = result.currentByType[PrType.Load]?.single()
+        assertNotNull(loadPr)
+        assertEquals(20.0, loadPr.value, 1e-6)
     }
 
     @Test
@@ -122,7 +151,7 @@ class WorkoutInsightsViewModelTest {
         val result = computePersonalRecords(sessions)
 
         val loadEvents = result.events.filter { it.type == PrType.Load }
-        assertEquals(2, loadEvents.size)
+        assertEquals(1, loadEvents.size)
         assertTrue(result.eventsByWorkout[22].isNullOrEmpty())
         assertTrue(result.eventsByWorkout[23]?.any { it.type == PrType.Load } == true)
     }
@@ -144,6 +173,7 @@ class WorkoutInsightsViewModelTest {
         weight: Double?,
         reps: Int?,
         bodyWeight: Double = 80.0,
+        complete: Boolean = true,
     ): SessionComputation {
         val normalizedWeight = normalizeWeight(weight, bodyWeight)
         val workout = Workout(
@@ -179,6 +209,7 @@ class WorkoutInsightsViewModelTest {
             groupId = 1,
             reps = reps,
             weight = weight,
+            complete = complete,
         )
         val sample = WorkoutSetSample(
             exerciseId = exerciseId,

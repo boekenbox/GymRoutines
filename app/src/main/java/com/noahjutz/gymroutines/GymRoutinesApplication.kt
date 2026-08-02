@@ -31,6 +31,7 @@ import androidx.core.app.TaskStackBuilder
 import androidx.core.net.toUri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -63,6 +64,12 @@ class GymRoutinesApplication : Application() {
         }
 
         scope.launch {
+            preferences.edit { prefs ->
+                if (prefs[AppPrefs.InsightsDataStartEpochMillis.key] == null) {
+                    prefs[AppPrefs.InsightsDataStartEpochMillis.key] = System.currentTimeMillis()
+                }
+            }
+
             launch {
                 val isForeground = callbackFlow {
                     val callback = object : DefaultLifecycleObserver {

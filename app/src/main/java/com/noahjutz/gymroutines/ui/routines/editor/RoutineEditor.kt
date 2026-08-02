@@ -76,6 +76,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun RoutineEditor(
     navToExercisePicker: () -> Unit,
+    navToExerciseEditor: (Int) -> Unit,
     navToWorkout: (Long) -> Unit,
     popBackStack: () -> Unit,
     routineId: Int,
@@ -127,7 +128,8 @@ fun RoutineEditor(
                         routine = routine.routine,
                         setGroups = routine.setGroups,
                         viewModel = viewModel,
-                        navToExercisePicker = navToExercisePicker
+                        navToExercisePicker = navToExercisePicker,
+                        navToExerciseEditor = navToExerciseEditor,
                     )
                 }
             }
@@ -227,7 +229,8 @@ private fun RoutineEditorContent(
     routine: Routine,
     setGroups: List<RoutineSetGroupWithSets>,
     viewModel: RoutineEditorViewModel,
-    navToExercisePicker: () -> Unit
+    navToExercisePicker: () -> Unit,
+    navToExerciseEditor: (Int) -> Unit,
 ) {
     val sortedSetGroups by remember(setGroups) {
         derivedStateOf { setGroups.sortedBy { it.group.position } }
@@ -424,6 +427,14 @@ private fun RoutineEditorContent(
                                         }
                                     ) {
                                         Text(stringResource(R.string.btn_move_down))
+                                    }
+                                    DropdownMenuItem(
+                                        onClick = {
+                                            expanded = false
+                                            navToExerciseEditor(exercise.exerciseId)
+                                        }
+                                    ) {
+                                        Text(stringResource(R.string.btn_rename_exercise))
                                     }
                                 }
                             }

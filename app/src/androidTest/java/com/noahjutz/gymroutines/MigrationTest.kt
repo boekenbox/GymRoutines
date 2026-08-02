@@ -47,7 +47,12 @@ class MigrationTest {
                 MIGRATION_39_40,
                 MIGRATION_40_41,
                 MIGRATION_41_42,
-                MIGRATION_42_43
+                MIGRATION_42_43,
+                MIGRATION_43_44,
+                MIGRATION_44_45,
+                MIGRATION_45_46,
+                MIGRATION_46_47,
+                MIGRATION_47_48,
             )
             .build()
             .apply {
@@ -159,6 +164,25 @@ class MigrationTest {
                 Assert.assertTrue(routine.moveToFirst())
                 val name = routine.getString(0)
                 Assert.assertEquals(name, "Legs")
+            }
+        }
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun migrate47to48AddsRoutineSaveFlag() {
+        helper.createDatabase(TEST_DB, 47).use { db ->
+            db.execSQL(
+                "INSERT INTO workout_set_group_table " +
+                    "(workoutId, exerciseId, position, restTimerWarmupSeconds, " +
+                    "restTimerWorkingSeconds, id) VALUES (0, 0, 0, 0, 0, 1)"
+            )
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 48, true, MIGRATION_47_48).use { db ->
+            db.query("SELECT saveToRoutine FROM workout_set_group_table WHERE id=1").use { cursor ->
+                Assert.assertTrue(cursor.moveToFirst())
+                Assert.assertEquals(1, cursor.getInt(0))
             }
         }
     }

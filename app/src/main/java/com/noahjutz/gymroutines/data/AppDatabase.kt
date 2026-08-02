@@ -40,7 +40,7 @@ import kotlinx.serialization.json.*
         WorkoutSet::class,
         WorkoutSetGroup::class,
     ],
-    version = 47,
+    version = 48,
     autoMigrations = [AutoMigration(from = 35, to = 36)],
     exportSchema = true
 )
@@ -651,6 +651,14 @@ val MIGRATION_46_47 = object : Migration(46, 47) {
         )
         db.execSQL(
             "UPDATE exercise_table SET libraryNotes = notes WHERE tags LIKE 'library:%'"
+        )
+    }
+}
+
+val MIGRATION_47_48 = object : Migration(47, 48) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE workout_set_group_table ADD COLUMN saveToRoutine INTEGER NOT NULL DEFAULT 1"
         )
     }
 }
